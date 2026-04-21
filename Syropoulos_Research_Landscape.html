@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Syropoulos — Research Universe</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#05080f; color:#dce6f5; font-family:'Georgia',serif; overflow:hidden; height:100vh; width:100vw; }
+#canvas-bg { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+#main-svg  { position:relative; z-index:1; display:block; }
+
+#header {
+  position:fixed; top:0; left:0; right:0; padding:14px 32px 8px;
+  z-index:200; background:linear-gradient(to bottom,rgba(5,8,15,.97) 55%,transparent);
+}
+#header h1 { font-size:1.25rem; font-weight:normal; letter-spacing:5px; color:#e8f0ff; }
+#header p  { font-size:.7rem; color:#3a5570; letter-spacing:2px; margin-top:2px; }
+
+#sidebar {
+  position:fixed; left:0; top:68px; bottom:0; width:210px; z-index:150;
+  padding:12px 10px; background:linear-gradient(to right,rgba(5,8,15,.96) 78%,transparent);
+  display:flex; flex-direction:column; gap:5px; overflow-y:auto;
+}
+#sidebar h3 {
+  font-size:.65rem; letter-spacing:3.5px; color:#8cc4e4;
+  text-transform:uppercase; margin:0 0 11px 1px; flex-shrink:0;
+}
+#sidebar > h3 { margin-top:8px; }
+.theme-btn {
+  display:flex; align-items:center; gap:9px; padding:8px 11px;
+  border:1px solid rgba(255,255,255,.05); border-radius:24px;
+  background:rgba(255,255,255,.025); cursor:pointer; font-family:'Georgia',serif;
+  font-size:.7rem; color:#6a90b5; transition:all .2s; text-align:left;
+}
+.theme-btn:hover { background:rgba(255,255,255,.07); color:#dce6f5; }
+.theme-btn.active { background:rgba(255,255,255,.11); color:#fff; border-color:rgba(255,255,255,.14); }
+.btn-icon  { font-size:1rem; flex-shrink:0; width:20px; text-align:center; }
+.btn-label { flex:1; line-height:1.3; }
+.btn-count { font-size:.62rem; color:#3a6888; background:rgba(255,255,255,.05); padding:2px 7px; border-radius:9px; }
+.theme-btn.active .btn-count { color:#6a90b5; }
+
+#conn-toggle {
+  margin-top:22px; padding:8px 11px; border:1px solid rgba(255,255,255,.09);
+  border-radius:24px; background:rgba(255,255,255,.04); cursor:pointer;
+  font-family:'Georgia',serif; font-size:.68rem; color:#5a7a9a; letter-spacing:.5px;
+  transition:all .2s; text-align:center;
+}
+#conn-toggle:hover { background:rgba(255,255,255,.09); color:#dce6f5; }
+#conn-toggle.on { background:rgba(160,190,255,.1); color:#a0c4ff; border-color:rgba(160,190,255,.25); }
+#conn-note { margin-top:5px; font-size:.62rem; color:#3a5870; line-height:1.6; padding:0 3px; display:none; }
+#conn-note.visible { display:block; }
+
+#tooltip {
+  position:fixed; z-index:500; background:rgba(6,10,20,.97);
+  border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:13px 17px;
+  max-width:290px; pointer-events:none; opacity:0; transform:translateY(5px);
+  transition:opacity .15s,transform .15s; backdrop-filter:blur(12px);
+}
+#tooltip.visible { opacity:1; transform:translateY(0); }
+.tt-cit   { font-size:.77rem; font-weight:bold; margin-bottom:5px; letter-spacing:.4px; }
+.tt-title { font-size:.82rem; line-height:1.55; color:#dce6f5; }
+.tt-bridge{ font-size:.69rem; margin-top:7px; font-style:italic; }
+.tt-theme { font-size:.66rem; margin-top:6px; color:#3a5570; text-transform:uppercase; letter-spacing:1px; }
+.tt-cite  { font-size:.68rem; margin-top:6px; color:#7ab8e0; }
+.tt-click { font-size:.66rem; margin-top:4px; color:#3a78b8; }
+
+/* ── Tool buttons ── */
+.tool-sep { margin-top:46px; margin-bottom:0; padding-top:16px; border-top:1px solid rgba(140,196,228,.13); flex-shrink:0; }
+.tool-btn {
+  display:flex; align-items:center; gap:8px; padding:7px 11px;
+  border:1px solid rgba(255,255,255,.07); border-radius:24px;
+  background:rgba(255,255,255,.03); cursor:pointer; font-family:'Georgia',serif;
+  font-size:.68rem; color:#5a7a9a; transition:all .2s; text-align:left; width:100%;
+}
+.tool-btn:hover { background:rgba(255,255,255,.09); color:#dce6f5; }
+.tool-btn.on { background:rgba(160,190,255,.1); color:#a0c4ff; border-color:rgba(160,190,255,.25); }
+#search-input {
+  display:none; width:100%; padding:6px 10px; margin-top:4px;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+  border-radius:12px; color:#dce6f5; font-family:'Georgia',serif; font-size:.7rem;
+  outline:none; transition:border-color .2s, background .2s;
+}
+#search-input.visible { display:block; }
+#search-input::placeholder { color:#3a5570; }
+#search-input:focus { border-color:rgba(160,190,255,.35); background:rgba(255,255,255,.09); }
+
+/* ── Year legend ── */
+#year-legend {
+  display:none; position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+  z-index:200; background:rgba(6,10,20,.88); border:1px solid rgba(255,255,255,.1);
+  border-radius:12px; padding:10px 20px 8px; backdrop-filter:blur(10px);
+  pointer-events:none; text-align:center;
+}
+#year-legend.visible { display:block; }
+#year-grad { display:block; border-radius:4px; margin-bottom:5px; }
+.yl-labels { display:flex; justify-content:space-between; font-size:.62rem; color:#6a90b5; letter-spacing:.5px; }
+.yl-title { font-size:.62rem; color:#4a6a8a; letter-spacing:2px; margin-bottom:6px; }
+
+/* ── Paper list panel ── */
+#paper-list {
+  display:none; position:absolute; inset:0; z-index:20;
+  background:linear-gradient(to right,rgba(5,8,15,.98) 82%,transparent);
+  flex-direction:column; padding:10px 8px; overflow-y:auto; gap:0;
+}
+#paper-list.visible { display:flex; }
+#pl-back {
+  display:flex; align-items:center; gap:7px; flex-shrink:0;
+  padding:7px 11px; margin-bottom:8px;
+  border:1px solid rgba(255,255,255,.08); border-radius:20px;
+  background:transparent; cursor:pointer; width:100%;
+  font-family:'Georgia',serif; font-size:.68rem; color:#5a7a9a; transition:all .2s;
+}
+#pl-back:hover { color:#dce6f5; background:rgba(255,255,255,.06); }
+#pl-heading { font-size:.62rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:5px; padding:0 4px; flex-shrink:0; }
+#pl-count   { font-size:.6rem; color:#3a5570; letter-spacing:1px; margin-bottom:10px; padding:0 4px; flex-shrink:0; }
+.pl-item {
+  padding:7px 9px; border-radius:8px; margin-bottom:4px; flex-shrink:0;
+  border:1px solid rgba(255,255,255,.04); background:rgba(255,255,255,.02);
+  transition:background .15s;
+}
+.pl-item:hover { background:rgba(255,255,255,.08); }
+.pl-item[data-doi] { cursor:pointer; }
+.pl-meta  { font-size:.62rem; margin-bottom:3px; font-style:italic; }
+.pl-title { font-size:.67rem; color:#9ab8d0; line-height:1.45; }
+
+/* ── Hub pulse animation ── */
+@keyframes hub-pulse {
+  0%,100% { stroke-opacity:.4; }
+  50%      { stroke-opacity:.8; }
+}
+.hub-pulse { animation: hub-pulse 3.5s ease-in-out infinite; }
+
+</style>
+</head>
+<body>
+<canvas id="canvas-bg"></canvas>
+<div id="header">
+  <h1>STYLIANOS SYROPOULOS</h1>
+  <p>RESEARCH UNIVERSE &mdash; 91 PUBLICATIONS</p>
+</div>
+<div id="sidebar"><h3>Themes</h3></div>
+<svg id="main-svg"></svg>
+<div id="year-legend">
+  <div class="yl-title">PUBLICATION YEAR</div>
+  <canvas id="year-grad" width="200" height="10"></canvas>
+  <div class="yl-labels"><span>2019</span><span>2022</span><span>2026</span></div>
+</div>
+<div id="tooltip">
+  <div class="tt-cit"    id="tt-cit"></div>
+  <div class="tt-title"  id="tt-title"></div>
+  <div class="tt-bridge" id="tt-bridge" style="display:none"></div>
+  <div class="tt-theme"  id="tt-theme"></div>
+  <div class="tt-cite"   id="tt-cite"  style="display:none"></div>
+  <div class="tt-click"  id="tt-click"></div>
+</div>
+<script>
+// ── STARS ──────────────────────────────────────────────────────────────────
+const cvs = document.getElementById('canvas-bg'), ctx = cvs.getContext('2d');
+let stars = [];
+function initStars() {
+  cvs.width = innerWidth; cvs.height = innerHeight;
+  stars = Array.from({length:220}, () => ({
+    x:Math.random()*cvs.width, y:Math.random()*cvs.height,
+    r:Math.random()*1.2+.2, a:Math.random()*.4+.08,
+    spd:(Math.random()*.4+.06)*(Math.random()<.5?1:-1)
+  }));
+}
+function drawStars() {
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+  stars.forEach(s => {
+    ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(180,210,255,${s.a})`; ctx.fill();
+    s.a += s.spd*.007; if(s.a>.6||s.a<.05) s.spd*=-1;
+  });
+  requestAnimationFrame(drawStars);
+}
+initStars(); drawStars();
+window.addEventListener('resize', initStars);
+
+// ── THEMES ─────────────────────────────────────────────────────────────────
+const THEMES = [
+  { id:'future',     color:'#3A6FD8', name:'Future Generations',      icon:'⏳', tagline:'Protecting future people, no matter when they are born', row:0, col:0 },
+  { id:'climate',    color:'#3DBE6E', name:'Climate & Environment',    icon:'🌿', tagline:'Changing and promoting behavior for a livable and equitable world',  row:0, col:1 },
+  { id:'altruism',   color:'#F5C842', name:'Altruism & Prosociality',       icon:'🤲', tagline:'The architecture of giving and helping',                          row:0, col:2 },
+  { id:'morality',   color:'#C49DFF', name:'Morality & Ethics',             icon:'⚖️', tagline:'Expanding the moral circle',                                      row:1, col:0 },
+  { id:'intergroup', color:'#FF7A7A', name:'Intergroup Conflict & Politics', icon:'💥', tagline:'Misperception, social norms, and identity',                      row:1, col:1 },
+  { id:'peace',      color:'#93D4FF', name:'Safety & Well-Being',            icon:'🕊️', tagline:'Understanding and increasing positive personal outcomes',        row:1, col:2 },
+];
+const themeMap = {};
+THEMES.forEach(t => themeMap[t.id] = t);
+
+// ── BRIDGE CONNECTIONS ─────────────────────────────────────────────────────
+const BRIDGES = {
+  83:{ secondary:'climate',    note:'Ecological ethics meets environmental psychology' },
+  67:{ secondary:'climate',    note:'Moral regard for nature bridges ethics & ecology' },
+  39:{ secondary:'climate',    note:'Longtermism as catalyst for climate action' },
+  53:{ secondary:'climate',    note:'Intergenerational framing for climate behavior' },
+  43:{ secondary:'future',     note:'Climate change requires intergenerational solutions' },
+  38:{ secondary:'future',     note:'Legacy motives link future care and climate coping' },
+  82:{ secondary:'altruism',   note:'Future concern predicts extraordinary giving' },
+  76:{ secondary:'intergroup', note:'Ingroup expansion enables distant altruism' },
+  85:{ secondary:'peace',      note:'Science trust at the intersection of politics & peace' },
+  59:{ secondary:'intergroup', note:'Religious identity bridges belief and climate action' },
+  36:{ secondary:'altruism',   note:'Pro-climate behavior as global prosocial action' },
+  15:{ secondary:'intergroup', note:'Moral exclusion underlies intergroup bigotry' },
+  46:{ secondary:'peace',      note:'Cultural norms shape both conflict and peace' },
+  64:{ secondary:'future',     note:'Human values across time — 38M obituaries' },
+  50:{ secondary:'altruism',   note:'Legacy motivation links climate coping & giving' },
+  74:{ secondary:'peace',      note:'COVID worldview shifts erode social trust' },
+  27:{ secondary:'peace',      note:'Political similarity reduces perceived threat' },
+  78:{ secondary:'altruism',   note:'Collective climate action as large-scale cooperation' },
+};
+
+// ── CITATION COUNTS (from Google Scholar) ─────────────────────────────────
+const CITES = {
+  1:72,  2:18,  3:56,  4:7,   5:77,  6:71,  7:12,  8:19,  9:61,
+  10:35, 11:7,  12:5,  13:12, 14:1,  15:17, 16:49, 17:146,18:81,
+  19:5,  20:2,  21:55, 22:40, 23:14, 24:13, 25:34, 26:23, 27:13,
+  28:1,  30:20, 31:25, 32:60, 33:8,  34:24, 35:32, 36:340,37:30,
+  38:20, 39:36, 40:50, 41:2,  43:34, 44:9,  45:25, 46:2,  47:29,
+  48:8,  49:38, 50:6,  51:15, 52:11, 53:16, 54:42, 55:367,56:33,
+  57:2,  58:5,  59:12, 60:5,  61:1,  64:2,  65:1,  66:2,  67:5,
+  69:8,  70:3,  71:6,  72:8,  75:4,  76:1,  78:1,  79:4,  82:1,
+  90:2,
+};
+
+// ── LAST-AUTHOR PAPERS (Syropoulos is senior/last author) ─────────────────
+const LAST_PAPERS = new Set([
+  31,48,49,50,51,52,53,57,60,63,65,67,68,70,72,76,79,82,87,90,
+]);
+
+// ── MENTEE PAPERS (contain † grad, †† undergrad, or ‡ postdoc mentee) ──────
+// Sourced directly from CV markers
+const MENTEE_PAPERS = new Set([
+  8,   // † Puschett (grad)
+  14,  // † Puschett (grad)
+  53,  // ‡ Law (postdoc)
+  54,  // ‡ Law (postdoc)
+  60,  // ‡ Law (postdoc)
+  63,  // ‡ Law (postdoc), †† Wang (undergrad)
+  64,  // ‡ Law (postdoc)
+  65,  // ‡ Law (postdoc)
+  67,  // ‡ Law (postdoc)
+  68,  // ‡ Law (postdoc)
+  70,  // ‡ Law (postdoc)
+  71,  // ‡ Law (postdoc)
+  72,  // ‡ Law (postdoc)
+  76,  // †† Capuano (undergrad), ‡ Law (postdoc)
+  77,  // ‡ Law (postdoc)
+  79,  // ‡ Law (postdoc)
+  80,  // † Capozzoli (grad)
+  82,  // †† Bauer (undergrad), ‡ Law (postdoc)
+  83,  // † Capozzoli (grad)
+  85,  // ‡ Law (postdoc)
+  86,  // ‡ Law (postdoc)
+  87,  // ‡ Law (postdoc)
+  88,  // ‡ Law (postdoc)
+  90,  // † Capozzoli (grad), ‡ Law (postdoc)
+  91,  // †† Wang (undergrad), ‡ Law (postdoc)
+]);
+
+// ── CO-AUTHOR DATA (all named collaborators per paper, excl. Syropoulos) ───
+const COAUTHORS = {
+  1:  ['Piazza','Sousa','Rottman'],
+  2:  [],
+  3:  ['Watkins','Shariff','Hodges','Markowitz'],
+  4:  ['Rivera-Rodriguez','Gomez','Baka','Cros','Martel','Rottman'],
+  5:  ['Markowitz'],
+  6:  ['Rottman','Crimston'],
+  7:  ['Markowitz'],
+  8:  ['Puschett','Leidner'],
+  9:  ['Markowitz'],
+  10: ['Wu','Burrows','Mercado'],
+  11: ['Markowitz'],
+  12: ['Ge','Gensler','Leidner','Loughnan','Chang','Harada','Mari','Paladino','Shi','Yeung','Kuo','Tsuchiya'],
+  13: ['Lifshin','Greenberg','Leidner','Helm','Sullivan','Horner','Mikulincer'],
+  14: ['Puschett','Leidner'],
+  15: ['Lifshin','Greenberg','Horner','Leidner'],
+  16: ['McLamore','Leidner','Hirschberger','Young','Zein'],
+  17: ['Hoogeveen','Sarafoglou','Aczel'],
+  18: ['Markowitz'],
+  19: [],
+  20: ['McLamore','Leidner'],
+  21: ['Shrum','Platt','Markowitz'],
+  22: ['Markowitz'],
+  23: ['Gkinopoulos'],
+  24: ['Wu','Rivera-Rodriguez','Dasgupta'],
+  25: ['Markowitz','Demarest','Shrum'],
+  26: ['Watkins','Goodwin','Markowitz'],
+  27: ['Leidner'],
+  28: ['McLamore','Leidner'],
+  29: ['Mah','Markowitz'],
+  30: [],
+  31: ['Law','Young'],
+  32: ['Markowitz'],
+  33: ['Law','Young'],
+  34: ['Sparkman','Constantino'],
+  35: ['Law','Young'],
+  36: ['Vlasceanu','Doell','Todorova'],
+  37: ['Leidner','Mercado','Li','Cros','Gomez','Baka','Chekroun','Rottman'],
+  38: ['Law','Mah','Young'],
+  39: ['Law','Young'],
+  40: ['Law','Young'],
+  41: ['Tedaldi','Markowitz'],
+  42: ['Law','Leidner'],
+  43: ['Law','Kraft-Todd','Mah','Markowitz','Young'],
+  44: ['Ashraf','Gomez','Lowenstein','Tariq','Niles','Fischer','Young','Yoeli'],
+  45: ['Law','Amormino','Young'],
+  46: ['Law'],
+  47: ['Doell','Todorova','Vlasceanu'],
+  48: ['Law','Coleman','Young'],
+  49: ['Law','Coleman','Gainsburg',"O'Connor"],
+  50: ['Mah','Markowitz'],
+  51: ['Law',"O'Connor",'Young'],
+  52: ['Law','Earp'],
+  53: ['Law','Colaizzi'],
+  54: ['Law','Kraft-Todd','Young'],
+  55: ['Cologna','Mede','Berger','Besley','Brick','Joubert','Maibach','Oreskes'],
+  56: ['Mede','Cologna','Berger','Besley','Brick','Joubert','Maibach','Oreskes'],
+  57: ['Chukwudebe','Manalili','Young'],
+  58: ['Selvanathan','Louis','Adelman','Baka','Leidner','Loughnan','Bilewicz'],
+  59: ['Sparkman'],
+  60: ['Law','Young'],
+  61: ['Versteegen'],
+  62: ['Cologna','Mede','Berger','Besley','Brick','Joubert','Maibach','Oreskes'],
+  63: ['Law','Wang'],
+  64: ['Markowitz','Mazzuchi','Law','Young'],
+  65: ['Manalili','Law','Signorini','Chukwudebe','Amormino','Markowitz','Young'],
+  66: ['Gligoric','Jost'],
+  67: ['Law','Crimston','Markowitz','Milfont','Claessens','Kyritsis','Atkinson','Bastian','Rottman'],
+  68: ['Law','Wylie','Kraft-Todd','Liang','Young'],
+  69: ['Mede','Cologna','Berger','Besley','Brick','Joubert','Maibach','Oreskes'],
+  70: ['Law','Young',"O'Connor"],
+  71: ['Law','Amormino','Marsh','Young',"O'Connor"],
+  72: ['Law','Gittle','Young'],
+  73: ['Garau','Lo Destro','Rullo','Prati','Visintin'],
+  74: ['Mah','Dixon-Gordon','Markowitz','Reid','Nteta','Ginn','Min','Lickel'],
+  75: ['Toribio-Florez','Altenmuller','Douglas'],
+  76: ['Capuano','Law'],
+  77: ['Wu','Law','Perry'],
+  78: ['Goldwert','Constantino','Vlasceanu','Doell'],
+  79: ['Law','Amormino','Marsh','Young',"O'Connor"],
+  80: ['Barbett','Capozzoli'],
+  81: ['Loustau','McManus','Doung','Young'],
+  82: ['Bauer','Law','Young','Amormino','Marsh',"O'Connor"],
+  83: ['Capozzoli','Law','DesRosches'],
+  84: ['Wu','Burrows','Mercado','Haase','Perry'],
+  85: ['Law','Leidner','Young'],
+  86: ['Janssen','Law','Prem','Siddiqi'],
+  87: ['Law','Young'],
+  88: ['Bae','Law',"O'Connor",'Amormino','Crimston','Bastian','Marsh','Young'],
+  89: ['Lifshin','Greenberg','Leidner','Helm','Mikulincer','Horner','Sullivan'],
+  90: ['Capozzoli','Law'],
+  91: ['Wang','Law','Young'],
+};
+
+// ── INSTITUTIONS ───────────────────────────────────────────────────────────
+const INSTITUTIONS = [
+  { id:'umass', name:'UMass Amherst',               abbr:'UMass', color:'#D45050', years:'2019–2022' },
+  { id:'bc',    name:'Boston College',              abbr:'BC',    color:'#A259C4', years:'2023–2024' },
+  { id:'asu',   name:'Arizona State University',    abbr:'ASU',   color:'#F5A623', years:'2025–present' },
+];
+const institMap = {};
+INSTITUTIONS.forEach(i => institMap[i.id] = i);
+
+function getAffil(year) {
+  if (year <= 2022) return 'umass';
+  if (year <= 2024) return 'bc';
+  return 'asu';
+}
+
+// ── PAPERS ─────────────────────────────────────────────────────────────────
+const PAPERS = [
+  {n:90,first:'Capozzoli',year:2026,abbr:'GPIR',        theme:'future',    title:'Future Generations Hold the Lowest Moral Standing, Even Below Present-Day Marginalized Human and Non-Human Outgroups',doi:'https://osf.io/preprints/psyarxiv/c9p8f_v1'},
+  {n:87,first:'Law',      year:2026,abbr:'Futures',     theme:'future',    title:'Americans Underestimate Their Concern for Future Generations',doi:'https://doi.org/10.1016/j.futures.2026.103819'},
+  {n:82,first:'Bauer',    year:2026,abbr:'BJSP',        theme:'future',    title:'Concern for Future Generations Predicts Present-Day Extraordinary Altruism: Organ Donorship',doi:'https://doi.org/10.1111/bjso.70070'},
+  {n:72,first:'Law',      year:2025,abbr:'PSPB',        theme:'future',    title:'Mapping and Increasing Americans\' Support for Initiatives Protecting Future Generations',doi:'https://doi.org/10.1177/01461672251384359'},
+  {n:70,first:'Law',      year:2025,abbr:'Sci Rep',     theme:'future',    title:'Mapping prescriptive beliefs on seventh generation stewardship',doi:'https://doi.org/10.1038/s41598-025-21466-9'},
+  {n:60,first:'Law',      year:2025,abbr:'BJSP',        theme:'future',    title:'Cultivating Multigenerational Moral Expansion: Concern for Future Generations',doi:'https://doi.org/10.1111/bjso.12892'},
+  {n:54,first:'Syropoulos',year:2025,abbr:'PSPB',       theme:'future',    title:'Impartial Intergenerational Beneficence: Equal Concern for All Future Generations',doi:'https://doi.org/10.1177/01461672241307800'},
+  {n:53,first:'Law',      year:2025,abbr:'COBS',        theme:'future',    title:'Climate Change is an Intergenerational Challenge That Requires Intergenerationally-Focused Behavioral Solutions',doi:'https://doi.org/10.1016/j.cobeha.2024.101467'},
+  {n:52,first:'Law',      year:2024,abbr:'J Med Ethics',theme:'future',    title:'Artificial Intelligence, Existential Risk and Equity: The Need for Multigenerational Bioethics',doi:'https://doi.org/10.1136/jme-2024-110583'},
+  {n:51,first:'Law',      year:2024,abbr:'PSPB',        theme:'future',    title:'The Probabilistic Price of Life Across Time: Generational Distance Renders a Life Today Worth More Than Ten Tomorrow',doi:'https://doi.org/10.1177/01461672241303993'},
+  {n:49,first:'Law',      year:2024,abbr:'PSPB',        theme:'future',    title:'Moral Future-Thinking: Does the Moral Circle Stand the Test of Time?',doi:'https://doi.org/10.1177/01461672241284324'},
+  {n:48,first:'Law',      year:2024,abbr:'PID',         theme:'future',    title:'A Future Beyond Ourselves: Can Self-Oriented Prospection Motivate Intergenerational Responsibility?',doi:'https://doi.org/10.1016/j.paid.2024.112915'},
+  {n:45,first:'Syropoulos',year:2024,abbr:'PID',        theme:'future',    title:'Mapping the Personality of (Exceptional) Intergenerational Concern',doi:'https://doi.org/10.1016/j.paid.2024.112814'},
+  {n:40,first:'Syropoulos',year:2024,abbr:'GPIR',       theme:'future',    title:'Longtermism and moral regard across temporal and social distance',doi:'https://doi.org/10.1177/13684302241242115'},
+  {n:39,first:'Syropoulos',year:2024,abbr:'npj CA',     theme:'future',    title:'The Case for Longtermism: Concern for the far future as a catalyst for pro-climate action',doi:'https://doi.org/10.1038/s44168-024-00110-8'},
+  {n:35,first:'Syropoulos',year:2024,abbr:'SPPS',       theme:'future',    title:'Longtermist Education Interventions Increase Concern for and Action to Protect Future Generations',doi:'https://doi.org/10.1177/19485506241228465'},
+  {n:33,first:'Syropoulos',year:2024,abbr:'Sustainability',theme:'future', title:'National Differences in Age and Future-Oriented Indicators Relate to Environmental Performance',doi:'https://doi.org/10.3390/su16010276'},
+  {n:31,first:'Law',      year:2023,abbr:'Sustainability',theme:'future',  title:'Why do longtermists care about protecting the environment?',doi:'https://doi.org/10.3390/su152416732'},
+  {n:30,first:'Syropoulos',year:2023,abbr:'Nat Rev Psy',theme:'future',    title:'Improving the lives of future people',doi:'https://doi.org/10.1038/s44159-023-00249-x'},
+  {n:22,first:'Syropoulos',year:2023,abbr:'JEP',        theme:'future',    title:'Our responsibility to future generations: The case for intergenerational approaches',doi:'https://doi.org/10.1016/j.jenvp.2023.102006'},
+
+  {n:86,first:'Janssen',  year:2026,abbr:'Space Policy',theme:'climate',   title:'Examining the meaning of sustainability on the Moon',doi:'https://doi.org/10.1016/j.spacepol.2026.101761'},
+  {n:78,first:'Goldwert', year:2026,abbr:'PNAS Nexus',  theme:'climate',   title:'A Megastudy of Behavioral Interventions to Catalyze Collective Climate Action',doi:'https://doi.org/10.1093/pnasnexus/pgaf400'},
+  {n:80,first:'Barbett',  year:2026,abbr:'JEP',         theme:'climate',   title:'Nature Connectedness and Well-Being: Multi-National Investigation Across 76 Countries',doi:'https://doi.org/10.1016/j.jenvp.2025.102895'},
+  {n:63,first:'Law',      year:2025,abbr:'JEP',         theme:'climate',   title:'Responsibility for Future Generations and Climate Change Mitigation: A Cross-National Study',doi:'https://doi.org/10.1016/j.jenvp.2025.102729'},
+  {n:62,first:'Cologna',  year:2025,abbr:'Nat CC',      theme:'climate',   title:'Global evidence on the relationship between extreme weather events and support for climate policies',doi:'https://doi.org/10.1038/s41558-025-02372-4'},
+  {n:59,first:'Syropoulos',year:2025,abbr:'PNAS',       theme:'climate',   title:'Most American Religious Leaders Silently Believe in Climate Change',doi:'https://doi.org/10.1073/pnas.2419705122'},
+  {n:50,first:'Mah',      year:2024,abbr:'JEP',         theme:'climate',   title:'Caring about one\'s legacy relates to constructive coping with climate change',doi:'https://doi.org/10.1016/j.jenvp.2024.102471'},
+  {n:44,first:'Syropoulos',year:2024,abbr:'JEP',        theme:'climate',   title:'Changing community climate change attitudes: Evidence from a community exhibit intervention',doi:'https://doi.org/10.1016/j.jenvp.2024.102369'},
+  {n:43,first:'Syropoulos',year:2024,abbr:'BJSP',       theme:'climate',   title:'Responsibility to Future Generations: A Strategy for Combatting Climate Change Across Political Divides',doi:'https://doi.org/10.1111/bjso.12775'},
+  {n:41,first:'Tedaldi',  year:2024,abbr:'JEP',         theme:'climate',   title:'Re-examining perceived responsibility to address climate change: A replication across 31 countries',doi:'https://doi.org/10.1016/j.jenvp.2024.102289'},
+  {n:36,first:'Vlasceanu',year:2024,abbr:'Sci Adv',     theme:'climate',   title:'Addressing climate change with behavioral science: A global intervention tournament in 63 countries',doi:'https://doi.org/10.1126/sciadv.adj5778'},
+  {n:34,first:'Syropoulos',year:2024,abbr:'Phil Trans B',theme:'climate',  title:'The Expressive Function of Public Policy: Renewable Energy Mandates Signal Social Norms',doi:'https://doi.org/10.1098/rstb.2023.0038'},
+  {n:32,first:'Syropoulos',year:2024,abbr:'JEP',        theme:'climate',   title:'Responsibility towards the future is a strong predictor of proenvironmental engagement',doi:'https://doi.org/10.1016/j.jenvp.2023.102218'},
+  {n:38,first:'Syropoulos',year:2024,abbr:'BMC Psych',  theme:'climate',   title:'Intergenerational concern relates to constructive coping and emotional reactions to climate change',doi:'https://doi.org/10.1186/s40359-024-01690-0'},
+  {n:29,first:'Syropoulos',year:2023,abbr:'JMHCC',      theme:'climate',   title:'Personal legacy: A psychological mechanism for increasing climate action',doi:'http://doi.org/10.5281/zenodo.8320457'},
+  {n:26,first:'Syropoulos',year:2023,abbr:'JEP',        theme:'climate',   title:'Impact-oriented vs reputation-focused legacy motives on intergenerational concern',doi:'https://doi.org/10.1016/j.jenvp.2023.102092'},
+  {n:25,first:'Syropoulos',year:2023,abbr:'JEP',        theme:'climate',   title:'A letter to future generations: Examining an intergenerational framing intervention',doi:'https://doi.org/10.1016/j.jenvp.2023.102074'},
+  {n:21,first:'Shrum',    year:2023,abbr:'WIRES CC',    theme:'climate',   title:'A review of the Green Parenthood effect on environmental and climate engagement',doi:'https://doi.org/10.1002/wcc.818'},
+  {n:18,first:'Syropoulos',year:2022,abbr:'JEP',        theme:'climate',   title:'Perceived responsibility consistently relates to pro-environmental attitudes: Evidence across 23 countries',doi:'https://doi.org/10.1016/j.jenvp.2022.101868'},
+  {n:11,first:'Syropoulos',year:2021,abbr:'Front SC',   theme:'climate',   title:'Mechanisms of intergenerational environmental action activated by COVID-19',doi:'https://doi.org/10.3389/frsc.2021.707888'},
+  {n:9, first:'Syropoulos',year:2021,abbr:'JEP',        theme:'climate',   title:'Perceived responsibility towards future generations and environmental concern',doi:'https://doi.org/10.1016/j.jenvp.2021.101651'},
+
+  {n:88,first:'Bae',      year:2026,abbr:'PID',         theme:'altruism',  title:'Altruistic, Not Reputational Concerns, Drive Human Prosociality, Values, and Aspirations Across The World',doi:'https://doi.org/10.1016/j.paid.2026.113804'},
+  {n:79,first:'Law',      year:2026,abbr:'PNAS Nexus',  theme:'altruism',  title:'Reasoning and empathy are not competing but complementary features of altruism',doi:'https://doi.org/10.1093/pnasnexus/pgag015'},
+  {n:76,first:'Capuano',  year:2026,abbr:'SPPC',        theme:'altruism',  title:'From Tribe to Humanity: How Ingroup Expansion Can Fuel Distant Altruism',doi:'https://doi.org/10.1111/spc3.70117'},
+  {n:81,first:'Loustau',  year:2026,abbr:'Soc Cog',     theme:'altruism',  title:'Contextualized Helping: Social Ties and the Perceived Motives of Prosocial Actors',doi:'https://doi.org/10.1521/soco.2026.44.1.46'},
+  {n:71,first:'Law',      year:2025,abbr:'PNAS Nexus',  theme:'altruism',  title:'Mapping the moral architecture of effective and extraordinary altruism',doi:'https://doi.org/10.1093/pnasnexus/pgaf326'},
+  {n:68,first:'Law',      year:2025,abbr:'BJSP',        theme:'altruism',  title:'People are More Skeptical of Others\' Public Virtue Motivations than Their Own',doi:'https://doi.org/10.1111/bjso.70014'},
+  {n:65,first:'Manalili', year:2025,abbr:'J Ind Diff',  theme:'altruism',  title:'The motivation to protect future people as a source of meaning and mental wellness',doi:'https://doi.org/10.1027/1614-0001/a000443'},
+  {n:64,first:'Markowitz',year:2025,abbr:'PNAS',        theme:'altruism',  title:'An Exploration of Basic Human Values in 38 Million Obituaries Over 30 Years',doi:'https://doi.org/10.1073/pnas.2510318122'},
+  {n:5, first:'Syropoulos',year:2021,abbr:'PID',        theme:'altruism',  title:'Prosocial responses to COVID-19: The role of gratitude, fairness and legacy motives',doi:'https://doi.org/10.1016/j.paid.2020.110488'},
+  {n:3, first:'Syropoulos',year:2021,abbr:'JEP',        theme:'altruism',  title:'The role of gratitude in motivating intergenerational environmental stewardship',doi:'https://doi.org/10.1016/j.jenvp.2020.101517'},
+  {n:7, first:'Syropoulos',year:2021,abbr:'PID',        theme:'altruism',  title:'A grateful eye towards the future? Gratitude relates to consideration of future consequences',doi:'https://doi.org/10.1016/j.paid.2021.110911'},
+
+  {n:91,first:'Wang',     year:2026,abbr:'Soc Cog',     theme:'morality',  title:'Investigating Relationships Between Moral Foundations and Support for Revenge',doi:'https://osf.io/preprints/psyarxiv/zkc65_v1'},
+  {n:89,first:'Lifshin',  year:2026,abbr:'GPIR',        theme:'morality',  title:'Am Not an Animal – I am an American: Disassociation from animals and cultural worldview defense',doi:''},
+  {n:83,first:'Syropoulos',year:2026,abbr:'JEP',        theme:'morality',  title:'Ecological Humility as a Distinct Moral Orientation Toward Nature: Scale Development and Validation',doi:'https://doi.org/10.1016/j.jenvp.2026.102998'},
+  {n:67,first:'Law',      year:2025,abbr:'JEP',         theme:'morality',  title:'Universal insights into moral expansiveness: Selective valuation of nature and humans',doi:'https://doi.org/10.1016/j.jenvp.2025.102778'},
+  {n:15,first:'Syropoulos',year:2022,abbr:'JPSP',       theme:'morality',  title:'Bigotry and the human–animal divide: (Dis)belief in human evolution and bigoted attitudes',doi:'https://doi.org/10.1037/pspi0000391'},
+  {n:13,first:'Lifshin',  year:2022,abbr:'PSPB',        theme:'morality',  title:'Perceived Similarity of the Self to Animals, Creativity, and Anxiety: A Terror Management Analysis',doi:'https://doi.org/10.1177/01461672211063260'},
+  {n:6, first:'Rottman',  year:2021,abbr:'Cog Sci',     theme:'morality',  title:'Tree-huggers versus human-lovers: Anthropomorphism and dehumanization predict valuing nature over outgroups',doi:'https://doi.org/10.1111/cogs.12967'},
+  {n:12,first:'Ge',       year:2022,abbr:'CCR',          theme:'morality',  title:'Constructivist Self-Construal: A Cross-Cultural Comparison',doi:'https://doi.org/10.1177/10693971211055276'},
+  {n:1, first:'Piazza',   year:2019,abbr:'SPPS',         theme:'morality',  title:'Which appraisals are foundational to moral judgment? Harm, injustice, and beyond',doi:'https://doi.org/10.1177/1948550618801326'},
+
+  {n:85,first:'Syropoulos',year:2026,abbr:'GPIR',       theme:'intergroup',title:'Presidential Candidate Endorsements by Scientific Journals Decrease Trust in Science',doi:'https://doi.org/10.1177/13684302261425955'},
+  {n:77,first:'Wu',       year:2026,abbr:'Adv Psych',   theme:'intergroup',title:'The Politics of Well-Being During Democratic Backsliding',doi:'https://doi.org/10.56296/aip00051'},
+  {n:75,first:'Toribio-Florez',year:2026,abbr:'EJSP',   theme:'intergroup',title:'Victims of Conspiracies? Conspiracy beliefs and victim justice sensitivity across nations',doi:'https://doi.org/10.1002/ejsp.70008'},
+  {n:74,first:'Syropoulos',year:2026,abbr:'JSPP',       theme:'intergroup',title:'Changes in Dangerous and Competitive Worldviews During the Coronavirus Epidemic',doi:'https://doi.org/10.5964/jspp.15643'},
+  {n:73,first:'Garau',    year:2025,abbr:'JASP',        theme:'intergroup',title:'Cultural humility: A Catalyst For Increasing Future Contact Intentions And Improving Intergroup Relations',doi:'https://doi.org/10.1111/jasp.70034'},
+  {n:61,first:'Versteegen',year:2025,abbr:'Pol Behav',  theme:'intergroup',title:'Pluribus Whom? Status Threat and American Identity in a Multiracial Democracy',doi:'https://doi.org/10.1007/s11109-025-10050-6'},
+  {n:58,first:'Selvanathan',year:2025,abbr:'GPIR',      theme:'intergroup',title:'Far-Right Movements in the Western World: How Media Exposure Relates to Normative Beliefs',doi:'https://doi.org/10.1177/13684302241309554'},
+  {n:42,first:'Syropoulos',year:2024,abbr:'GPIR',       theme:'intergroup',title:'Increased perceived safety in day-to-day life relates to critical national identification',doi:'https://doi.org/10.1177/13684302241249057'},
+  {n:27,first:'Syropoulos',year:2023,abbr:'PSPB',       theme:'intergroup',title:'Emphasizing Similarities Between Politically Opposed Groups and Perceptions of the Political Opposition',doi:'https://doi.org/10.1177/01461672231192384'},
+  {n:24,first:'Wu',       year:2023,abbr:'SPPC',        theme:'intergroup',title:'From Model Minority to Yellow Peril: The impact of COVID-19 on negative emotions and anti-Asian prejudice',doi:'https://doi.org/10.1111/spc3.12833'},
+  {n:23,first:'Syropoulos',year:2023,abbr:'SPPC',       theme:'intergroup',title:'Who do we trust? Trust and conspiracy theories in vaccinated vs. unvaccinated Europeans across 17 countries',doi:'https://doi.org/10.1111/spc3.12792'},
+  {n:20,first:'McLamore', year:2022,abbr:'BJSP',        theme:'intergroup',title:'Ingroup attachment and glorification with responses to the coronavirus pandemic: 21 countries',doi:'https://doi.org/10.1111/bjso.12614'},
+  {n:16,first:'McLamore', year:2022,abbr:'Sci Rep',     theme:'intergroup',title:'(Dis)trust in scientific information links political ideology and reactions to the Coronavirus pandemic',doi:'https://doi.org/10.1038/s41598-022-07508-6'},
+  {n:66,first:'Gligoric', year:2025,abbr:'SPPS',        theme:'intergroup',title:'Macro-Economic Conditions and National Stereotypes in 45 non-Western countries',doi:'https://doi.org/10.1177/19485506251370424'},
+  {n:46,first:'Syropoulos',year:2024,abbr:'P&C',        theme:'intergroup',title:'Cultural tightness and its association with national levels of peace',doi:'https://doi.org/10.1037/pac0000725'},
+  {n:28,first:'McLamore', year:2023,abbr:'SPPC',        theme:'intergroup',title:'Tightness shifts in the U.S. and China during the Coronavirus pandemic',doi:'https://doi.org/10.1111/spc3.12883'},
+
+  {n:37,first:'Syropoulos',year:2024,abbr:'PID',        theme:'peace',     title:'How Safe Are We? Introducing The Multidimensional Model of Perceived Interpersonal Safety',doi:'https://doi.org/10.1016/j.paid.2024.112640'},
+  {n:19,first:'Syropoulos',year:2022,abbr:'P&C',        theme:'peace',     title:'Urban environment quality and perceived safety: Seven nationally representative samples',doi:'https://doi.org/10.1037/pac0000647'},
+  {n:14,first:'Syropoulos',year:2022,abbr:'CRSP',       theme:'peace',     title:'The impact of the coronavirus pandemic on firearm sales in the American public',doi:'https://doi.org/10.1080/23743603.2021.2018931'},
+  {n:8, first:'Syropoulos',year:2021,abbr:'Pol Psych',  theme:'peace',     title:'Positive and negative peace as predictors of effective governmental responses to COVID-19',doi:'https://doi.org/10.1111/pops.12773'},
+  {n:4, first:'Syropoulos',year:2021,abbr:'P&C',        theme:'peace',     title:'Deadly but protective: Americans\' unique perception of weapons',doi:'https://doi.org/10.1037/pac0000507'},
+  {n:2, first:'Syropoulos',year:2020,abbr:'P&C',        theme:'peace',     title:'Personal safety and positive life outcomes: Cross-national evidence from the World Values Survey',doi:'https://doi.org/10.1037/pac0000444'},
+  {n:84,first:'Wu',        year:2026,abbr:'ASAP',       theme:'peace',     title:'Is academia for everyone? Experiences of U.S. psychology doctoral students',doi:'https://doi.org/10.1111/asap.70061'},
+  {n:57,first:'Chukwudebe',year:2025,abbr:'PID',        theme:'peace',     title:'Independence of Intellect and Ego Relates to Increased Subjective Well-being',doi:'https://doi.org/10.1016/j.paid.2025.113091'},
+  {n:17,first:'Hoogeveen',year:2022,abbr:'RBB',         theme:'peace',     title:'A many-analysts approach to the relation between religiosity and well-being',doi:'https://doi.org/10.1080/2153599X.2022.2070255'},
+  {n:10,first:'Syropoulos',year:2021,abbr:'Front Psych',theme:'peace',     title:'Psychology doctoral program experiences and student well-being during COVID-19',doi:'https://doi.org/10.3389/fpsyg.2021.629205'},
+  {n:69,first:'Mede',     year:2025,abbr:'Sci Comm',    theme:'peace',     title:'Public communication about science across 68 countries',doi:'https://doi.org/10.1177/10755470251376615'},
+  {n:55,first:'Cologna',  year:2025,abbr:'Nat HB',      theme:'peace',     title:'Trust in scientists and their role in society: a global assessment in 68 countries',doi:'https://doi.org/10.1038/s41562-024-02090-5'},
+  {n:56,first:'Mede',     year:2025,abbr:'Sci Data',    theme:'peace',     title:'Perceptions of science, science communication, and climate change attitudes in 68 countries: The TISP dataset',doi:'https://doi.org/10.1038/s41597-024-04100-7'},
+  {n:47,first:'Doell',    year:2024,abbr:'Sci Data',    theme:'peace',     title:'The International Climate Psychology Collaboration: Climate change-related data from 63 countries',doi:'https://doi.org/10.1038/s41597-024-03865-1'},
+];
+
+// ── SIDEBAR ────────────────────────────────────────────────────────────────
+const sidebar = document.getElementById('sidebar');
+THEMES.forEach(t => {
+  const cnt = PAPERS.filter(p=>p.theme===t.id).length;
+  const btn = document.createElement('button');
+  btn.className='theme-btn'; btn.dataset.theme=t.id;
+  btn.innerHTML=`<span class="btn-icon" style="color:${t.color}">${t.icon}</span><span class="btn-label">${t.name.replace('\n',' ')}</span><span class="btn-count">${cnt}</span>`;
+  btn.onclick=()=>filterTheme(t.id);
+  sidebar.appendChild(btn);
+});
+const ct = document.createElement('button');
+ct.id='conn-toggle'; ct.textContent='✦  Show Cross-Topic Bridges'; ct.onclick=toggleConn;
+sidebar.appendChild(ct);
+const cn = document.createElement('div');
+cn.id='conn-note'; cn.innerHTML='Dashed arcs connect papers bridging two themes.<br><span style="color:#3a5570">'+ Object.keys(BRIDGES).length +' bridging papers found.</span>';
+sidebar.appendChild(cn);
+
+// Institutions section
+const iSep = document.createElement('div');
+iSep.className='tool-sep';
+const iHdr = document.createElement('h3');
+iHdr.textContent='Institutions';
+iSep.appendChild(iHdr);
+sidebar.appendChild(iSep);
+
+INSTITUTIONS.forEach(inst => {
+  const cnt = PAPERS.filter(p => getAffil(p.year) === inst.id).length;
+  const btn = document.createElement('button');
+  btn.className='theme-btn'; btn.dataset.institution=inst.id;
+  btn.innerHTML=`<span class="btn-icon" style="color:${inst.color}">🏛</span><span class="btn-label" style="line-height:1.2"><span style="font-size:.78rem">${inst.abbr}</span><br><span style="font-size:.58rem;color:#4a6a8a">${inst.years}</span></span><span class="btn-count">${cnt}</span>`;
+  btn.onclick=()=>filterInstitution(inst.id);
+  sidebar.appendChild(btn);
+});
+
+// Tools section
+const toolSep = document.createElement('div');
+toolSep.className='tool-sep';
+const toolHdr = document.createElement('h3');
+toolHdr.textContent='Tools';
+toolSep.appendChild(toolHdr);
+sidebar.appendChild(toolSep);
+
+const btnCite = document.createElement('button');
+btnCite.className='tool-btn'; btnCite.id='btn-cite';
+btnCite.innerHTML='<span style="font-size:.9rem">📊</span>&nbsp; Citation size';
+btnCite.onclick=toggleCiteMode;
+sidebar.appendChild(btnCite);
+
+const btnOrder = document.createElement('button');
+btnOrder.className='tool-btn'; btnOrder.id='btn-order';
+btnOrder.innerHTML='<span style="font-size:.9rem">#</span>&nbsp; Publication order';
+btnOrder.onclick=toggleOrderMode;
+sidebar.appendChild(btnOrder);
+
+const btnFirst = document.createElement('button');
+btnFirst.className='tool-btn'; btnFirst.id='btn-first';
+btnFirst.innerHTML='<span style="font-size:.9rem">★</span>&nbsp; First author only';
+btnFirst.onclick=toggleFirstOnly;
+sidebar.appendChild(btnFirst);
+
+const btnLast = document.createElement('button');
+btnLast.className='tool-btn'; btnLast.id='btn-last';
+btnLast.innerHTML='<span style="font-size:.9rem">↑</span>&nbsp; Last author only';
+btnLast.onclick=toggleLastOnly;
+sidebar.appendChild(btnLast);
+
+const btnYear = document.createElement('button');
+btnYear.className='tool-btn'; btnYear.id='btn-year';
+btnYear.innerHTML='<span style="font-size:.9rem">🕐</span>&nbsp; Year Timeline';
+btnYear.onclick=toggleYearMode;
+sidebar.appendChild(btnYear);
+
+const btnSearch = document.createElement('button');
+btnSearch.className='tool-btn'; btnSearch.id='btn-search';
+btnSearch.innerHTML='<span style="font-size:.9rem">🔍</span>&nbsp; Search Papers';
+btnSearch.onclick=toggleSearch;
+sidebar.appendChild(btnSearch);
+
+const searchInput = document.createElement('input');
+searchInput.type='text'; searchInput.id='search-input';
+searchInput.placeholder='Title, author, journal…';
+searchInput.oninput=()=>doSearch(searchInput.value);
+sidebar.appendChild(searchInput);
+
+const btnMentee = document.createElement('button');
+btnMentee.className='tool-btn'; btnMentee.id='btn-mentee';
+btnMentee.innerHTML='<span style="font-size:.9rem">🎓</span>&nbsp; Mentee papers';
+btnMentee.onclick=toggleMenteeMode;
+sidebar.appendChild(btnMentee);
+
+const btnTraj = document.createElement('button');
+btnTraj.className='tool-btn'; btnTraj.id='btn-traj';
+btnTraj.innerHTML='<span style="font-size:.9rem">→</span>&nbsp; Historical trajectory';
+btnTraj.onclick=toggleTrajectory;
+sidebar.appendChild(btnTraj);
+
+const btnCollab = document.createElement('button');
+btnCollab.className='tool-btn'; btnCollab.id='btn-collab';
+btnCollab.innerHTML='<span style="font-size:.9rem">👥</span>&nbsp; Top collaborators';
+btnCollab.onclick=showCollabPanel;
+sidebar.appendChild(btnCollab);
+
+// Paper list overlay panel (populated on hub/theme click)
+const panel = document.createElement('div');
+panel.id='paper-list';
+sidebar.appendChild(panel);
+
+
+// ── SVG + LAYOUT ───────────────────────────────────────────────────────────
+const W = innerWidth, H = innerHeight;
+const SIDEBAR_W = 210, HEADER_H = 68;
+const usW = W - SIDEBAR_W, usH = H - HEADER_H - 10;
+const colW = usW / 3, rowH = usH / 2;
+const HUB_R    = Math.min(colW * 0.43, rowH * 0.43);
+const ILLUST_R = HUB_R * 0.28;
+const PR = 16; // paper node radius
+const TITLE_FS = Math.max(13, HUB_R * 0.095);
+const TAG_FS   = Math.max(13, HUB_R * 0.08);
+const RIM_GAP  = 13;   // px from hub rim to tagline baseline
+const TXT_GAP  = 10;   // px from tagline cap-height to title baseline
+
+THEMES.forEach(t => {
+  t.hx = SIDEBAR_W + colW * (t.col + 0.5) + (1 - t.col) * 11;
+  t.hy = HEADER_H  + rowH * (t.row + 0.5) + (t.row === 0 ? 14 : -14);
+});
+
+const svg = d3.select('#main-svg').attr('width', W).attr('height', H);
+
+// ── DEFS ────────────────────────────────────────────────────────────────────
+const defs = svg.append('defs');
+
+// Clip paths — one per theme hub
+THEMES.forEach(t => {
+  defs.append('clipPath').attr('id',`clip-${t.id}`)
+    .append('circle').attr('cx',t.hx).attr('cy',t.hy).attr('r',HUB_R-2);
+});
+
+// Paper glow filters
+THEMES.forEach(t => {
+  const f = defs.append('filter').attr('id',`gp-${t.id}`)
+    .attr('x','-100%').attr('y','-100%').attr('width','300%').attr('height','300%');
+  f.append('feGaussianBlur').attr('stdDeviation','4').attr('result','b');
+  const m = f.append('feMerge');
+  m.append('feMergeNode').attr('in','b');
+  m.append('feMergeNode').attr('in','SourceGraphic');
+});
+
+// Hub glow filters
+THEMES.forEach(t => {
+  const f = defs.append('filter').attr('id',`gh-${t.id}`)
+    .attr('x','-60%').attr('y','-60%').attr('width','220%').attr('height','220%');
+  f.append('feGaussianBlur').attr('stdDeviation','18').attr('result','b');
+  const m = f.append('feMerge');
+  m.append('feMergeNode').attr('in','b');
+  m.append('feMergeNode').attr('in','SourceGraphic');
+});
+
+// Hub radial gradient backgrounds
+THEMES.forEach(t => {
+  const g = defs.append('radialGradient').attr('id',`hbg-${t.id}`)
+    .attr('cx','50%').attr('cy','50%').attr('r','50%');
+  g.append('stop').attr('offset','0%').attr('stop-color',t.color).attr('stop-opacity',.13);
+  g.append('stop').attr('offset','70%').attr('stop-color',t.color).attr('stop-opacity',.06);
+  g.append('stop').attr('offset','100%').attr('stop-color',t.color).attr('stop-opacity',.02);
+});
+
+// Bridge arc gradients
+Object.entries(BRIDGES).forEach(([n,b]) => {
+  const paper = PAPERS.find(p=>p.n==n); if(!paper) return;
+  const g = defs.append('linearGradient').attr('id',`bg-${n}`)
+    .attr('gradientUnits','userSpaceOnUse');
+  g.append('stop').attr('offset','0%').attr('stop-color',themeMap[paper.theme].color).attr('stop-opacity',.8);
+  g.append('stop').attr('offset','100%').attr('stop-color',themeMap[b.secondary].color).attr('stop-opacity',.8);
+});
+
+// ── LAYER GROUPS ────────────────────────────────────────────────────────────
+const gBridge     = svg.append('g').attr('class','g-bridge').style('display','none');
+const gHubs       = svg.append('g').attr('class','g-hubs');
+const gPapers     = svg.append('g').attr('class','g-papers');
+const gTrajectory = svg.append('g').attr('class','g-traj').style('display','none');
+
+// ── HUB CIRCLES ─────────────────────────────────────────────────────────────
+const hubGs = gHubs.selectAll('g.hub').data(THEMES).join('g').attr('class','hub')
+  .attr('transform', t=>`translate(${t.hx},${t.hy})`)
+  .style('cursor','pointer')
+  .on('click', (_,t)=>filterTheme(t.id));
+
+// Background fill
+hubGs.append('circle').attr('r',HUB_R)
+  .attr('fill', t=>`url(#hbg-${t.id})`)
+  .attr('filter', t=>`url(#gh-${t.id})`);
+
+// Stroke border (animated pulse)
+hubGs.append('circle').attr('r',HUB_R)
+  .attr('class','hub-pulse')
+  .attr('fill','none')
+  .attr('stroke', t=>t.color)
+  .attr('stroke-opacity',.55)
+  .attr('stroke-width',2);
+
+// Inner depth ring
+hubGs.append('circle').attr('r',HUB_R-14)
+  .attr('fill','none').attr('stroke', t=>t.color)
+  .attr('stroke-opacity',.18).attr('stroke-width',1.2);
+
+// Inner accent ring
+hubGs.append('circle').attr('r',HUB_R-28)
+  .attr('fill','none').attr('stroke', t=>t.color)
+  .attr('stroke-opacity',.08).attr('stroke-width',.7);
+
+// ── ILLUSTRATIONS ──────────────────────────────────────────────────────────
+const IS = ILLUST_R / 38; // illustration scale factor
+
+hubGs.each(function(t) {
+  const g = d3.select(this).append('g')
+    .attr('transform',`scale(${IS})`);
+  const c = t.color;
+  const sw = 2.2 / IS; // stroke-width adjusted for scale
+
+  if (t.id === 'future') {
+    // Three children holding hands
+    // Child 1 (left)
+    g.append('circle').attr('cx',-28).attr('cy',-18).attr('r',8).attr('fill','none').attr('stroke',c).attr('stroke-width',sw);
+    g.append('line').attr('x1',-28).attr('y1',-10).attr('x2',-28).attr('y2',6).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round');
+    g.append('line').attr('x1',-28).attr('y1',-1).attr('x2',-40).attr('y2',5).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round');
+    g.append('line').attr('x1',-28).attr('y1',-1).attr('x2',-16).attr('y2',1).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round'); // hand to center child
+    g.append('line').attr('x1',-28).attr('y1',6).attr('x2',-35).attr('y2',20).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round');
+    g.append('line').attr('x1',-28).attr('y1',6).attr('x2',-21).attr('y2',20).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round');
+
+    // Child 2 (center, taller, arms raised)
+    g.append('circle').attr('cx',0).attr('cy',-24).attr('r',10).attr('fill','none').attr('stroke',c).attr('stroke-width',sw);
+    g.append('line').attr('x1',0).attr('y1',-14).attr('x2',0).attr('y2',8).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round');
+    g.append('line').attr('x1',0).attr('y1',-4).attr('x2',-16).attr('y2',1).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round'); // to child 1
+    g.append('line').attr('x1',0).attr('y1',-4).attr('x2',16).attr('y2',1).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round');  // to child 3
+    g.append('line').attr('x1',0).attr('y1',8).attr('x2',-8).attr('y2',22).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round');
+    g.append('line').attr('x1',0).attr('y1',8).attr('x2',8).attr('y2',22).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round');
+
+    // Child 3 (right)
+    g.append('circle').attr('cx',28).attr('cy',-16).attr('r',8).attr('fill','none').attr('stroke',c).attr('stroke-width',sw);
+    g.append('line').attr('x1',28).attr('y1',-8).attr('x2',28).attr('y2',8).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round');
+    g.append('line').attr('x1',28).attr('y1',-1).attr('x2',16).attr('y2',1).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round');
+    g.append('line').attr('x1',28).attr('y1',-1).attr('x2',40).attr('y2',5).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round');
+    g.append('line').attr('x1',28).attr('y1',8).attr('x2',22).attr('y2',22).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round');
+    g.append('line').attr('x1',28).attr('y1',8).attr('x2',34).attr('y2',22).attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round');
+
+    // Dots/stars above (future hope)
+    [-16,0,16].forEach((dx,i)=>{
+      g.append('circle').attr('cx',dx).attr('cy',-38+i%2*4).attr('r',2.5).attr('fill',c).attr('fill-opacity',.7);
+    });
+
+  } else if (t.id === 'climate') {
+    // Tree — trunk, three tiers of foliage
+    g.append('rect').attr('x',-6).attr('y',14).attr('width',12).attr('height',24)
+      .attr('fill',c).attr('fill-opacity',.65).attr('rx',2).attr('stroke',c).attr('stroke-width',sw*.5);
+    g.append('line').attr('x1',-22).attr('y1',38).attr('x2',22).attr('y2',38)
+      .attr('stroke',c).attr('stroke-width',sw).attr('stroke-linecap','round').attr('stroke-opacity',.45);
+    g.append('polygon').attr('points','0,-6 30,22 -30,22')
+      .attr('fill',c).attr('fill-opacity',.60).attr('stroke',c).attr('stroke-width',sw*.4);
+    g.append('polygon').attr('points','0,-20 24,6 -24,6')
+      .attr('fill',c).attr('fill-opacity',.75).attr('stroke',c).attr('stroke-width',sw*.4);
+    g.append('polygon').attr('points','0,-36 18,-12 -18,-12')
+      .attr('fill',c).attr('fill-opacity',.90).attr('stroke',c).attr('stroke-width',sw*.4);
+
+  } else if (t.id === 'altruism') {
+    // Two hands with heart — left cupped hand
+    g.append('path').attr('d','M-38,-8 C-38,8 -24,20 -6,20 L-2,20 C-2,14 -2,6 -2,-2 C-2,-10 -12,-16 -22,-12 C-32,-8 -38,-8 -38,-8 Z').attr('fill',c).attr('fill-opacity',.55).attr('stroke',c).attr('stroke-width',sw*.7);
+    // Right cupped hand (mirror)
+    g.append('path').attr('d','M38,-8 C38,8 24,20 6,20 L2,20 C2,14 2,6 2,-2 C2,-10 12,-16 22,-12 C32,-8 38,-8 38,-8 Z').attr('fill',c).attr('fill-opacity',.55).attr('stroke',c).attr('stroke-width',sw*.7);
+    // Heart floating above the hands
+    g.append('path').attr('d','M0,-24 C1,-32 -10,-32 -10,-24 C-10,-16 0,-8 0,-6 C0,-8 10,-16 10,-24 C10,-32 -1,-32 0,-24 Z').attr('fill',c).attr('fill-opacity',.9);
+    // Glow dots on hands
+    g.append('circle').attr('cx',-20).attr('cy',8).attr('r',3).attr('fill',c).attr('fill-opacity',.4);
+    g.append('circle').attr('cx',20).attr('cy',8).attr('r',3).attr('fill',c).attr('fill-opacity',.4);
+
+  } else if (t.id === 'morality') {
+    // Scales of justice
+    g.append('line').attr('x1',0).attr('y1',-34).attr('x2',0).attr('y2',26).attr('stroke',c).attr('stroke-width',sw+.5).attr('stroke-linecap','round');
+    g.append('line').attr('x1',-14).attr('y1',26).attr('x2',14).attr('y2',26).attr('stroke',c).attr('stroke-width',sw+1).attr('stroke-linecap','round');
+    g.append('circle').attr('cx',0).attr('cy',-34).attr('r',4).attr('fill',c);
+    g.append('line').attr('x1',-30).attr('y1',-10).attr('x2',30).attr('y2',-10).attr('stroke',c).attr('stroke-width',sw+.5).attr('stroke-linecap','round');
+    // Left pan strings + pan
+    g.append('line').attr('x1',-30).attr('y1',-10).attr('x2',-30).attr('y2',6).attr('stroke',c).attr('stroke-width',1.2).attr('stroke-dasharray','2,1.5');
+    g.append('path').attr('d','M-44,6 C-44,14 -30,18 -16,14 C-30,18 -44,14 -44,6 Z').attr('fill',c).attr('fill-opacity',.35).attr('stroke',c).attr('stroke-width',1.2);
+    g.append('line').attr('x1',-44).attr('y1',6).attr('x2',-16).attr('y2',6).attr('stroke',c).attr('stroke-width',1.5);
+    // Right pan strings + pan (tilted down to show imbalance)
+    g.append('line').attr('x1',30).attr('y1',-10).attr('x2',30).attr('y2',10).attr('stroke',c).attr('stroke-width',1.2).attr('stroke-dasharray','2,1.5');
+    g.append('path').attr('d','M16,10 C16,18 30,22 44,18 C30,22 16,18 16,10 Z').attr('fill',c).attr('fill-opacity',.35).attr('stroke',c).attr('stroke-width',1.2);
+    g.append('line').attr('x1',16).attr('y1',10).attr('x2',44).attr('y2',10).attr('stroke',c).attr('stroke-width',1.5);
+
+  } else if (t.id === 'intergroup') {
+    // Comic-style explosion + BAM!
+    const pts = [];
+    for(let i=0;i<24;i++){
+      const r = i%2===0 ? 36 : 20;
+      const a = (i*Math.PI/12) - Math.PI/2;
+      pts.push(`${(r*Math.cos(a)).toFixed(1)},${(r*Math.sin(a)).toFixed(1)}`);
+    }
+    g.append('polygon').attr('points',pts.join(' ')).attr('fill',c).attr('fill-opacity',.65).attr('stroke',c).attr('stroke-width',1);
+    // BAM! text removed
+    // Small stars around
+    [[28,-28],[28,28],[-28,28]].forEach(([sx,sy])=>{
+      g.append('circle').attr('cx',sx).attr('cy',sy).attr('r',4).attr('fill',c).attr('fill-opacity',.5);
+    });
+
+  } else if (t.id === 'peace') {
+    // Brain — two lobes with folds and brain stem
+    g.append('path').attr('d','M-4,-32 C-22,-36 -40,-24 -40,-8 C-40,8 -30,20 -16,22 C-10,24 -4,23 -4,22 L-4,-32 Z')
+      .attr('fill',c).attr('fill-opacity',.52).attr('stroke',c).attr('stroke-width',sw*.8);
+    g.append('path').attr('d','M4,-32 C22,-36 40,-24 40,-8 C40,8 30,20 16,22 C10,24 4,23 4,22 L4,-32 Z')
+      .attr('fill',c).attr('fill-opacity',.52).attr('stroke',c).attr('stroke-width',sw*.8);
+    g.append('line').attr('x1',0).attr('y1',-32).attr('x2',0).attr('y2',22)
+      .attr('stroke',c).attr('stroke-width',sw*.5).attr('stroke-opacity',.4);
+    // Left folds
+    g.append('path').attr('d','M-22,-22 C-32,-16 -34,-6 -28,-2')
+      .attr('fill','none').attr('stroke',c).attr('stroke-width',sw*.7).attr('stroke-opacity',.65).attr('stroke-linecap','round');
+    g.append('path').attr('d','M-28,6 C-32,14 -26,20 -18,21')
+      .attr('fill','none').attr('stroke',c).attr('stroke-width',sw*.7).attr('stroke-opacity',.65).attr('stroke-linecap','round');
+    g.append('path').attr('d','M-10,-28 C-16,-20 -14,-12 -8,-8')
+      .attr('fill','none').attr('stroke',c).attr('stroke-width',sw*.7).attr('stroke-opacity',.65).attr('stroke-linecap','round');
+    // Right folds (mirror)
+    g.append('path').attr('d','M22,-22 C32,-16 34,-6 28,-2')
+      .attr('fill','none').attr('stroke',c).attr('stroke-width',sw*.7).attr('stroke-opacity',.65).attr('stroke-linecap','round');
+    g.append('path').attr('d','M28,6 C32,14 26,20 18,21')
+      .attr('fill','none').attr('stroke',c).attr('stroke-width',sw*.7).attr('stroke-opacity',.65).attr('stroke-linecap','round');
+    g.append('path').attr('d','M10,-28 C16,-20 14,-12 8,-8')
+      .attr('fill','none').attr('stroke',c).attr('stroke-width',sw*.7).attr('stroke-opacity',.65).attr('stroke-linecap','round');
+    // Brain stem
+    g.append('path').attr('d','M-6,22 C-6,30 -4,36 0,38 C4,36 6,30 6,22')
+      .attr('fill',c).attr('fill-opacity',.42).attr('stroke',c).attr('stroke-width',sw*.7);
+  }
+});
+
+// Tagline — above hub rim for top row, below hub rim for bottom row
+gHubs.selectAll('text.hub-tag').data(THEMES).join('text')
+  .attr('class','hub-tag')
+  .attr('x', t=>t.hx)
+  .attr('y', t => t.row === 0
+    ? t.hy - HUB_R - RIM_GAP
+    : t.hy + HUB_R + RIM_GAP + TAG_FS + 8)
+  .attr('text-anchor','middle')
+  .attr('fill', t=>t.color)
+  .attr('fill-opacity',.48)
+  .attr('font-size', `${TAG_FS}px`)
+  .attr('font-style','italic')
+  .text(t=>t.tagline);
+
+// Title — above tagline for top row, above tagline (which is below hub) for bottom row
+gHubs.selectAll('text.hub-title').data(THEMES).join('text')
+  .attr('class','hub-title')
+  .attr('x', t=>t.hx)
+  .attr('y', t => t.row === 0
+    ? t.hy - HUB_R - RIM_GAP - TAG_FS - TXT_GAP + 10
+    : t.hy + HUB_R + RIM_GAP + 2)
+  .attr('text-anchor','middle')
+  .attr('fill', t=>t.color)
+  .attr('font-size', `${TITLE_FS}px`)
+  .attr('font-family','Georgia, serif')
+  .attr('letter-spacing','1px')
+  .attr('font-weight','bold')
+  .style('text-shadow', t=>`0 0 14px ${t.color}`)
+  .each(function(t) {
+    const el = d3.select(this);
+    const lines = t.name.split('\n');
+    if (lines.length === 1) {
+      el.text(lines[0]);
+    } else {
+      el.text('');
+      lines.forEach((line, i) => {
+        el.append('tspan').attr('x', t.hx).attr('dy', i===0 ? 0 : '1.2em').text(line);
+      });
+      // for two-line titles: top row shifts up, bottom row shifts down
+      if (t.row === 0) {
+        el.attr('y', t.hy - HUB_R - RIM_GAP - TAG_FS - TXT_GAP - TITLE_FS * 0.6 - 10);
+      }
+    }
+  });
+
+// Hub citation total (shown in cite mode, inside hub near bottom)
+const hubCiteTotals = {};
+THEMES.forEach(t => {
+  hubCiteTotals[t.id] = PAPERS.filter(p=>p.theme===t.id)
+    .reduce((s,p)=>s+(CITES[p.n]||0),0);
+});
+gHubs.selectAll('text.hub-cite-total').data(THEMES).join('text')
+  .attr('class','hub-cite-total')
+  .attr('x', t=>t.hx)
+  .attr('y', t=>t.hy + HUB_R - 18)
+  .attr('text-anchor','middle')
+  .attr('fill', t=>t.color).attr('fill-opacity',.75)
+  .attr('font-size', `${Math.max(10, HUB_R*0.058)}px`)
+  .attr('font-family','Georgia, serif').attr('font-style','italic')
+  .style('display','none')
+  .text(t=>`${hubCiteTotals[t.id].toLocaleString()} citations`);
+
+// ── FORCE SIMULATION ───────────────────────────────────────────────────────
+const nodes = PAPERS.map(p => ({
+  ...p,
+  bridge:   BRIDGES[p.n] || null,
+  cites:    CITES[p.n] ?? null,
+  isLast:   LAST_PAPERS.has(p.n),
+  isMentee: MENTEE_PAPERS.has(p.n),
+  affil:    getAffil(p.year),
+  x: themeMap[p.theme].hx + (Math.random()-.5)*80,
+  y: themeMap[p.theme].hy + (Math.random()-.5)*80,
+}));
+
+function boundaryForce() {
+  nodes.forEach(d => {
+    const hub = themeMap[d.theme];
+    const dx = d.x - hub.hx, dy = d.y - hub.hy;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const maxD = HUB_R - PR - 8;
+    if (dist > maxD && dist > 0) {
+      d.x = hub.hx + dx/dist*maxD;
+      d.y = hub.hy + dy/dist*maxD;
+      d.vx *= 0.4; d.vy *= 0.4;
+    }
+  });
+}
+
+function illustForce() {
+  nodes.forEach(d => {
+    const hub = themeMap[d.theme];
+    const dx = d.x - hub.hx, dy = d.y - hub.hy;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const minD = ILLUST_R + PR + 6;
+    if (dist < minD && dist > 0) {
+      const strength = (minD - dist) / minD * 0.45;
+      d.vx += dx/dist*strength;
+      d.vy += dy/dist*strength;
+    }
+  });
+}
+
+const sim = d3.forceSimulation(nodes)
+  .force('collide', d3.forceCollide(PR+4).strength(0.92))
+  .force('x', d3.forceX(d=>themeMap[d.theme].hx).strength(0.16))
+  .force('y', d3.forceY(d=>themeMap[d.theme].hy).strength(0.16))
+  .force('boundary', boundaryForce)
+  .force('illust',   illustForce)
+  .alpha(0.9).alphaDecay(0.015);
+
+// ── PAPER NODES ────────────────────────────────────────────────────────────
+const isSyro = d => d.first === 'Syropoulos';
+
+const pGs = gPapers.selectAll('g.pnode').data(nodes).join('g').attr('class','pnode')
+  .style('cursor', d => d.doi ? 'pointer' : 'default')
+  .call(d3.drag()
+    .on('start',(ev,d)=>{ if(!ev.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+    .on('drag', (ev,d)=>{ d.fx=ev.x; d.fy=ev.y; })
+    .on('end',  (ev,d)=>{ if(!ev.active) sim.alphaTarget(0); d.fx=null; d.fy=null; })
+  )
+  .on('mouseover', showTip)
+  .on('mousemove', moveTip)
+  .on('mouseout',  hideTip)
+  .on('click', (_,d) => { if(d.doi) window.open(d.doi,'_blank'); });
+
+// Citation aura — glow ring sized by sqrt(cites), shown in cite mode
+pGs.append('circle').attr('class','cite-aura')
+  .attr('r', d => d.cites ? Math.min(PR + Math.sqrt(d.cites) * 1.6, PR + 38) : PR)
+  .attr('fill', d => themeMap[d.theme].color).attr('fill-opacity', 0.16)
+  .attr('stroke', d => themeMap[d.theme].color).attr('stroke-opacity', 0.35).attr('stroke-width', 1)
+  .style('display','none');
+
+// Halo ring for Syropoulos-first papers
+pGs.filter(isSyro).append('circle').attr('class','halo').attr('r', PR+7)
+  .attr('fill','none').attr('stroke', d=>themeMap[d.theme].color)
+  .attr('stroke-opacity',.28).attr('stroke-width',1.5);
+
+// Bridge diamond
+pGs.filter(d=>d.bridge).append('polygon').attr('points','0,-11 7,0 0,11 -7,0')
+  .attr('fill','none').attr('stroke','#fff').attr('stroke-opacity',.55).attr('stroke-width',1.2);
+
+// Main circle
+pGs.append('circle').attr('class','mc').attr('r', PR)
+  .attr('fill', d=>themeMap[d.theme].color)
+  .attr('fill-opacity', d=>isSyro(d)?0.88:0.65)
+  .attr('stroke', d=>themeMap[d.theme].color)
+  .attr('stroke-width', d=>isSyro(d)?1.5:0.7)
+  .attr('stroke-opacity',.9)
+  .attr('filter', d=>`url(#gp-${d.theme})`);
+
+// Year label inside circle
+pGs.append('text').attr('class','year-lbl')
+  .attr('text-anchor','middle').attr('dominant-baseline','middle')
+  .attr('fill','rgba(255,255,255,0.95)')
+  .attr('font-size','10px').attr('font-family','Courier New, monospace')
+  .attr('font-weight','bold').attr('pointer-events','none')
+  .text(d=>`'${String(d.year).slice(2)}`);
+
+// Citation count label (shown in cite mode)
+pGs.append('text').attr('class','cite-label')
+  .attr('text-anchor','middle').attr('dominant-baseline','middle')
+  .attr('fill','rgba(255,255,255,0.97)')
+  .attr('font-size','8px').attr('font-family','Courier New, monospace')
+  .attr('font-weight','bold').attr('pointer-events','none')
+  .text(d => d.cites != null ? d.cites : '–')
+  .style('display','none');
+
+// Publication order label — CV number (shown in order mode)
+pGs.append('text').attr('class','n-label')
+  .attr('text-anchor','middle').attr('dominant-baseline','middle')
+  .attr('fill','rgba(255,255,255,0.97)')
+  .attr('font-size','9px').attr('font-family','Courier New, monospace')
+  .attr('font-weight','bold').attr('pointer-events','none')
+  .text(d => d.n)
+  .style('display','none');
+
+// ── TICK ────────────────────────────────────────────────────────────────────
+sim.on('tick', () => {
+  pGs.attr('transform', d=>`translate(${d.x},${d.y})`);
+  if (bridgePaths) updateBridges();
+  if (trajMode) updateTrajectory();
+});
+
+// ── ENTRANCE ANIMATION ─────────────────────────────────────────────────────
+// Start all nodes invisible at their hub center, then bloom outward
+pGs.style('opacity', 0)
+   .attr('transform', d=>`translate(${themeMap[d.theme].hx},${themeMap[d.theme].hy})`);
+setTimeout(() => {
+  pGs.each(function(_, i) {
+    d3.select(this).transition()
+      .delay(i * 14)
+      .duration(520)
+      .ease(d3.easeCubicOut)
+      .style('opacity', 1);
+  });
+}, 320);
+
+// ── BRIDGE ARCS ─────────────────────────────────────────────────────────────
+let bridgePaths = null;
+function buildBridges() {
+  const bd = nodes.filter(d=>d.bridge);
+  // Update gradient endpoints dynamically via tick
+  bridgePaths = gBridge.selectAll('path.barc').data(bd).join('path').attr('class','barc')
+    .attr('fill','none')
+    .attr('stroke', d=>`url(#bg-${d.n})`)
+    .attr('stroke-width',1.8)
+    .attr('stroke-dasharray','5,4')
+    .attr('stroke-opacity',.65)
+    .style('pointer-events','visibleStroke')
+    .on('mouseover', showTip).on('mousemove', moveTip).on('mouseout', hideTip);
+}
+function updateBridges() {
+  bridgePaths.each(function(d) {
+    const sh = themeMap[d.bridge.secondary];
+    const mx = (d.x+sh.hx)/2, my = (d.y+sh.hy)/2;
+    const midX = (themeMap[d.theme].hx + sh.hx)/2;
+    const midY = (themeMap[d.theme].hy + sh.hy)/2;
+    const qx = mx + (midX-mx)*0.1 + (H/2-my)*0.08;
+    const qy = my + (midY-my)*0.1 - (W/2-mx)*0.08;
+    d3.select(this).attr('d',`M${d.x},${d.y} Q${qx},${qy} ${sh.hx},${sh.hy}`);
+    // Update gradient direction
+    const grad = document.getElementById(`bg-${d.n}`);
+    if (grad) {
+      grad.setAttribute('x1', d.x); grad.setAttribute('y1', d.y);
+      grad.setAttribute('x2', sh.hx); grad.setAttribute('y2', sh.hy);
+    }
+  });
+}
+
+// ── TOOLTIP ─────────────────────────────────────────────────────────────────
+const tip = document.getElementById('tooltip');
+function showTip(ev,d) {
+  const t = themeMap[d.theme];
+  const el = document.getElementById('tt-cit');
+  el.textContent=`(${d.first}, ${d.year}, ${d.abbr})`;
+  el.style.color=t.color;
+  document.getElementById('tt-title').textContent=d.title;
+  const be = document.getElementById('tt-bridge');
+  if (d.bridge) {
+    be.style.display='block';
+    be.style.color=themeMap[d.bridge.secondary].color;
+    be.textContent=`Bridge: ${d.bridge.note}`;
+  } else { be.style.display='none'; }
+  document.getElementById('tt-theme').textContent=`${t.icon} ${t.name.replace('\n',' ')}` + (d.bridge ? ` ↔ ${themeMap[d.bridge.secondary].icon} ${themeMap[d.bridge.secondary].name.replace('\n',' ')}` : '');
+  const citeEl = document.getElementById('tt-cite');
+  if (d.cites != null) { citeEl.style.display='block'; citeEl.textContent=`📊 ${d.cites} citation${d.cites!==1?'s':''}  (Google Scholar)`; }
+  else { citeEl.style.display='none'; }
+  document.getElementById('tt-click').textContent = d.doi ? 'Click to open paper ↗' : '';
+  tip.classList.add('visible');
+  moveTip(ev);
+}
+function moveTip(ev) {
+  let x=ev.clientX+16, y=ev.clientY-12;
+  if(x+300>W) x=ev.clientX-315;
+  if(y+200>H) y=H-205;
+  tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+function hideTip() { tip.classList.remove('visible'); }
+
+// ── FILTER ──────────────────────────────────────────────────────────────────
+let activeTheme=null, activeInstitution=null, showConn=false;
+let firstOnlyMode=false, lastOnlyMode=false;
+
+function nodeOpacity(d) {
+  if (firstOnlyMode       && d.first !== 'Syropoulos') return 0.06;
+  if (lastOnlyMode        && !d.isLast)                return 0.06;
+  if (typeof menteeMode !== 'undefined' && menteeMode && !d.isMentee) return 0.06;
+  if (activeTheme         && d.theme !== activeTheme)  return 0.06;
+  if (activeInstitution   && d.affil !== activeInstitution) return 0.06;
+  if (typeof activeCollaborator !== 'undefined' && activeCollaborator && !(COAUTHORS[d.n]||[]).includes(activeCollaborator)) return 0.06;
+  const inp = document.getElementById('search-input');
+  if (inp) {
+    const q = inp.value.trim().toLowerCase();
+    if (q) return (d.title.toLowerCase().includes(q) || d.first.toLowerCase().includes(q) ||
+                   d.abbr.toLowerCase().includes(q)  || String(d.year).includes(q)) ? 1 : 0.06;
+  }
+  return 1;
+}
+function refreshOpacity(dur=300) {
+  pGs.transition().duration(dur).style('opacity', nodeOpacity);
+}
+
+function filterTheme(tid) {
+  if (activeTheme===tid) { resetFilter(); return; }
+  activeTheme=tid;
+  document.querySelectorAll('.theme-btn[data-theme]').forEach(b=>b.classList.toggle('active',b.dataset.theme===tid));
+  refreshOpacity();
+  hubGs.transition().duration(300).style('opacity',d=>d.id===tid?1:0.22);
+  if(bridgePaths) gBridge.selectAll('path.barc').transition().duration(300)
+    .attr('stroke-opacity',d=>(d.theme===tid||(d.bridge&&d.bridge.secondary===tid))?0.85:0.05);
+  sim.force('x',d3.forceX(d=>themeMap[d.theme].hx).strength(d=>d.theme===tid?0.38:0.10))
+     .force('y',d3.forceY(d=>themeMap[d.theme].hy).strength(d=>d.theme===tid?0.38:0.10))
+     .alpha(0.3).restart();
+  showPaperList(tid);
+}
+function resetFilter() {
+  activeTheme=null;
+  document.querySelectorAll('.theme-btn[data-theme]').forEach(b=>b.classList.remove('active'));
+  refreshOpacity();
+  hubGs.transition().duration(300).style('opacity',1);
+  if(bridgePaths) gBridge.selectAll('path.barc').transition().duration(300).attr('stroke-opacity',.65);
+  sim.force('x',d3.forceX(d=>themeMap[d.theme].hx).strength(0.16))
+     .force('y',d3.forceY(d=>themeMap[d.theme].hy).strength(0.16))
+     .alpha(0.3).restart();
+  if (activeInstitution) showInstitutionList(activeInstitution);
+  else hidePaperList();
+}
+function toggleConn() {
+  showConn=!showConn;
+  ct.textContent=showConn?'✦  Hide Cross-Topic Bridges':'✦  Show Cross-Topic Bridges';
+  ct.classList.toggle('on',showConn);
+  cn.classList.toggle('visible',showConn);
+  if(showConn){ if(!bridgePaths) buildBridges(); gBridge.style('display',null); updateBridges(); }
+  else gBridge.style('display','none');
+}
+
+// ── INSTITUTION FILTER ─────────────────────────────────────────────────────
+function filterInstitution(iid) {
+  if (activeInstitution === iid) { resetInstitution(); return; }
+  activeInstitution = iid;
+  document.querySelectorAll('.theme-btn[data-institution]').forEach(b => b.classList.toggle('active', b.dataset.institution === iid));
+  refreshOpacity();
+  showInstitutionList(iid);
+}
+function resetInstitution() {
+  activeInstitution = null;
+  document.querySelectorAll('.theme-btn[data-institution]').forEach(b => b.classList.remove('active'));
+  refreshOpacity();
+  hidePaperList();
+}
+function showInstitutionList(iid) {
+  const inst = institMap[iid];
+  const papers = PAPERS.filter(p => getAffil(p.year) === iid)
+    .sort((a,b) => b.year - a.year || a.first.localeCompare(b.first));
+  panel.innerHTML = '';
+  const back = document.createElement('button');
+  back.id = 'pl-back'; back.innerHTML = '← All institutions'; back.onclick = resetInstitution;
+  panel.appendChild(back);
+  const hdr = document.createElement('div');
+  hdr.id = 'pl-heading'; hdr.style.color = inst.color;
+  hdr.textContent = `🏛 ${inst.name}`;
+  panel.appendChild(hdr);
+  const totalCites = papers.reduce((s,p) => s + (CITES[p.n] || 0), 0);
+  const cnt = document.createElement('div');
+  cnt.id = 'pl-count';
+  cnt.innerHTML = `${papers.length} papers &nbsp;·&nbsp; <span style="color:${inst.color};opacity:.8">${totalCites.toLocaleString()} total citations</span>`;
+  panel.appendChild(cnt);
+  papers.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'pl-item';
+    if (p.doi) item.dataset.doi = '1';
+    const tc = themeMap[p.theme].color;
+    const syroMark = p.first === 'Syropoulos' ? `<span style="color:${tc};opacity:.7"> ★</span>` : '';
+    const citeStr = CITES[p.n] != null ? `<span style="color:${tc};opacity:.6;float:right">${CITES[p.n]} cit.</span>` : '';
+    item.innerHTML = `<div class="pl-meta" style="color:${tc}">${p.first}${syroMark}, ${p.year} · ${p.abbr}${citeStr}</div><div class="pl-title">${p.title}</div>`;
+    if (p.doi) item.onclick = () => window.open(p.doi, '_blank');
+    panel.appendChild(item);
+  });
+  panel.classList.add('visible');
+}
+
+// ── MENTEE PAPERS ──────────────────────────────────────────────────────────
+let menteeMode = false;
+function toggleMenteeMode() {
+  menteeMode = !menteeMode;
+  document.getElementById('btn-mentee').classList.toggle('on', menteeMode);
+  refreshOpacity();
+}
+
+// ── HISTORICAL TRAJECTORY ──────────────────────────────────────────────────
+let trajMode = false;
+let trajBuilt = false;
+let trajAnimating = false;
+let trajAnimTimeout = null;
+const sortedNodes = [...nodes].sort((a,b) => a.n - b.n);
+
+function buildTrajectory() {
+  gTrajectory.selectAll('*').remove();
+  // End rings mark paper #1 (oldest) and #91 (newest)
+  gTrajectory.selectAll('circle.traj-end').data([sortedNodes[0], sortedNodes[sortedNodes.length-1]]).join('circle')
+    .attr('class','traj-end').attr('r', 22).attr('fill','none')
+    .attr('stroke','rgba(255,255,255,0.82)').attr('stroke-width', 2.5)
+    .style('opacity', 0);
+  trajBuilt = true;
+}
+function updateTrajectory() {
+  gTrajectory.selectAll('circle.traj-end').each(function(d) {
+    d3.select(this).attr('cx',d.x).attr('cy',d.y);
+  });
+}
+function animateTrajectory() {
+  trajAnimating = true;
+  // Dim all, show first paper immediately
+  pGs.style('opacity', d => d.n === sortedNodes[0].n ? 1 : 0.06);
+  gTrajectory.selectAll('circle.traj-end').filter(d => d.n === sortedNodes[0].n)
+    .transition().delay(250).duration(400).style('opacity', 1);
+
+  let i = 0;
+  const STEP = 68;
+  function step() {
+    if (!trajMode) { finishTrajAnimation(false); return; }
+    if (i >= sortedNodes.length - 1) { finishTrajAnimation(true); return; }
+    // Light up next paper in sequence
+    pGs.filter(d => d.n === sortedNodes[i + 1].n).transition().duration(80).style('opacity', 1);
+    i++;
+    trajAnimTimeout = setTimeout(step, STEP);
+  }
+  trajAnimTimeout = setTimeout(step, 500);
+}
+function finishTrajAnimation(completed) {
+  trajAnimating = false;
+  pGs.transition().duration(400).style('opacity', nodeOpacity);
+  if (completed) {
+    gTrajectory.selectAll('circle.traj-end').transition().duration(400).style('opacity', 1);
+  }
+}
+function toggleTrajectory() {
+  trajMode = !trajMode;
+  document.getElementById('btn-traj').classList.toggle('on', trajMode);
+  if (trajMode) {
+    if (!trajBuilt) buildTrajectory();
+    gTrajectory.selectAll('circle.traj-end').style('opacity', 0);
+    gTrajectory.style('display', null);
+    updateTrajectory();
+    animateTrajectory();
+  } else {
+    if (trajAnimTimeout) clearTimeout(trajAnimTimeout);
+    trajAnimating = false;
+    gTrajectory.style('display', 'none');
+    pGs.transition().duration(300).style('opacity', nodeOpacity);
+  }
+}
+
+// ── TOP COLLABORATORS ──────────────────────────────────────────────────────
+let collabMode = false;
+let activeCollaborator = null;
+// Count using full COAUTHORS data
+const collabCounts = {};
+Object.values(COAUTHORS).forEach(arr => arr.forEach(name => {
+  collabCounts[name] = (collabCounts[name] || 0) + 1;
+}));
+const TOP_COLLABS = Object.entries(collabCounts).sort((a,b) => b[1]-a[1]).slice(0,10);
+
+function buildCollabList() {
+  activeCollaborator = null;
+  refreshOpacity();
+  panel.innerHTML = '';
+  const back = document.createElement('button');
+  back.id = 'pl-back'; back.innerHTML = '← Close';
+  back.onclick = () => { collabMode=false; document.getElementById('btn-collab').classList.remove('on'); activeCollaborator=null; refreshOpacity(); hidePaperList(); };
+  panel.appendChild(back);
+  const hdr = document.createElement('div');
+  hdr.id = 'pl-heading'; hdr.style.color = '#a0c4ff';
+  hdr.textContent = '👥 Top 10 Collaborators';
+  panel.appendChild(hdr);
+  const sub = document.createElement('div');
+  sub.id = 'pl-count'; sub.textContent = 'Ranked by first-authored co-publications';
+  panel.appendChild(sub);
+  TOP_COLLABS.forEach(([name, count]) => {
+    const item = document.createElement('div');
+    item.className = 'pl-item'; item.style.cursor = 'pointer';
+    item.innerHTML = `<div class="pl-meta" style="color:#a0c4ff">${name}<span style="float:right;color:#6a90b5">${count} paper${count>1?'s':''}</span></div>`;
+    item.onclick = () => filterByCollaborator(name);
+    panel.appendChild(item);
+  });
+  panel.classList.add('visible');
+}
+function showCollabPanel() {
+  collabMode = !collabMode;
+  document.getElementById('btn-collab').classList.toggle('on', collabMode);
+  if (!collabMode) { activeCollaborator=null; refreshOpacity(); hidePaperList(); return; }
+  buildCollabList();
+}
+function filterByCollaborator(name) {
+  activeCollaborator = name;
+  refreshOpacity();
+  const papers = PAPERS.filter(p => (COAUTHORS[p.n]||[]).includes(name)).sort((a,b) => b.year-a.year);
+  panel.innerHTML = '';
+  const back = document.createElement('button');
+  back.id = 'pl-back'; back.innerHTML = '← Top collaborators';
+  back.onclick = () => { activeCollaborator=null; refreshOpacity(); buildCollabList(); };
+  panel.appendChild(back);
+  const hdr = document.createElement('div');
+  hdr.id = 'pl-heading'; hdr.style.color = '#a0c4ff';
+  hdr.textContent = `👤 ${name}`;
+  panel.appendChild(hdr);
+  const cnt = document.createElement('div');
+  cnt.id = 'pl-count'; cnt.textContent = `${papers.length} co-authored paper${papers.length>1?'s':''}`;
+  panel.appendChild(cnt);
+  papers.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'pl-item';
+    if (p.doi) item.dataset.doi = '1';
+    const tc = themeMap[p.theme].color;
+    const citeStr = CITES[p.n] != null ? `<span style="color:${tc};opacity:.6;float:right">${CITES[p.n]} cit.</span>` : '';
+    item.innerHTML = `<div class="pl-meta" style="color:${tc}">${p.year} · ${p.abbr}${citeStr}</div><div class="pl-title">${p.title}</div>`;
+    if (p.doi) item.onclick = () => window.open(p.doi, '_blank');
+    panel.appendChild(item);
+  });
+  panel.classList.add('visible');
+}
+
+// ── LABEL MODES (cite / order / year — mutually exclusive) ─────────────────
+let citeMode = false, orderMode = false;
+
+function setLabelMode(mode) {
+  pGs.select('text.year-lbl').style('display',  mode==='year'  ? null : 'none');
+  pGs.select('text.cite-label').style('display', mode==='cite'  ? null : 'none');
+  pGs.select('text.n-label').style('display',    mode==='order' ? null : 'none');
+}
+function toggleCiteMode() {
+  citeMode = !citeMode;
+  if (citeMode) { orderMode=false; document.getElementById('btn-order').classList.remove('on'); }
+  document.getElementById('btn-cite').classList.toggle('on', citeMode);
+  pGs.select('circle.cite-aura').style('display', citeMode ? null : 'none');
+  gHubs.selectAll('text.hub-cite-total').style('display', citeMode ? null : 'none');
+  setLabelMode(citeMode ? 'cite' : 'year');
+}
+function toggleOrderMode() {
+  orderMode = !orderMode;
+  if (orderMode) { citeMode=false; document.getElementById('btn-cite').classList.remove('on');
+    pGs.select('circle.cite-aura').style('display','none');
+    gHubs.selectAll('text.hub-cite-total').style('display','none'); }
+  document.getElementById('btn-order').classList.toggle('on', orderMode);
+  setLabelMode(orderMode ? 'order' : 'year');
+}
+
+// ── PAPER LIST PANEL ──────────────────────────────────────────────────────
+function showPaperList(tid) {
+  const t = themeMap[tid];
+  const papers = PAPERS.filter(p=>p.theme===tid)
+    .sort((a,b)=>b.year-a.year || a.first.localeCompare(b.first));
+  panel.innerHTML='';
+
+  const back=document.createElement('button');
+  back.id='pl-back'; back.innerHTML='← All themes'; back.onclick=resetFilter;
+  panel.appendChild(back);
+
+  const hdr=document.createElement('div');
+  hdr.id='pl-heading'; hdr.style.color=t.color;
+  hdr.textContent=`${t.icon}  ${t.name}`;
+  panel.appendChild(hdr);
+
+  const totalCites = papers.reduce((s,p)=>s+(CITES[p.n]||0),0);
+  const cnt=document.createElement('div');
+  cnt.id='pl-count';
+  cnt.innerHTML=`${papers.length} papers &nbsp;·&nbsp; <span style="color:${t.color};opacity:.8">${totalCites.toLocaleString()} total citations</span>`;
+  panel.appendChild(cnt);
+
+  papers.forEach(p=>{
+    const item=document.createElement('div');
+    item.className='pl-item';
+    if(p.doi) item.dataset.doi='1';
+    const syroMark = p.first==='Syropoulos' ? `<span style="color:${t.color};opacity:.7"> ★</span>` : '';
+    const citeStr = CITES[p.n] != null ? `<span style="color:${t.color};opacity:.6;float:right">${CITES[p.n]} cit.</span>` : '';
+    item.innerHTML=`<div class="pl-meta" style="color:${t.color}">${p.first}${syroMark}, ${p.year} · ${p.abbr}${citeStr}</div><div class="pl-title">${p.title}</div>`;
+    if(p.doi) item.onclick=()=>window.open(p.doi,'_blank');
+    panel.appendChild(item);
+  });
+
+  panel.classList.add('visible');
+}
+function hidePaperList() { panel.classList.remove('visible'); }
+
+// ── YEAR MODE ──────────────────────────────────────────────────────────────
+let yearMode = false;
+const yearScale = d3.scaleLinear().domain([2019,2026]).range([0.12,0.92]);
+
+function toggleYearMode() {
+  yearMode = !yearMode;
+  document.getElementById('btn-year').classList.toggle('on', yearMode);
+  document.getElementById('year-legend').classList.toggle('visible', yearMode);
+  if (yearMode) {
+    pGs.select('circle.mc')
+      .transition().duration(400)
+      .attr('fill', d => d3.interpolatePlasma(yearScale(d.year)))
+      .attr('fill-opacity', 0.92);
+    pGs.select('circle.halo')
+      .transition().duration(400)
+      .attr('stroke', d => d3.interpolatePlasma(yearScale(d.year)));
+    drawYearLegend();
+  } else {
+    pGs.select('circle.mc')
+      .transition().duration(400)
+      .attr('fill', d => themeMap[d.theme].color)
+      .attr('fill-opacity', d => isSyro(d) ? 0.88 : 0.65);
+    pGs.select('circle.halo')
+      .transition().duration(400)
+      .attr('stroke', d => themeMap[d.theme].color);
+  }
+}
+
+function drawYearLegend() {
+  const c = document.getElementById('year-grad');
+  const cx = c.getContext('2d');
+  const grd = cx.createLinearGradient(0,0,200,0);
+  for (let i=0; i<=20; i++) {
+    grd.addColorStop(i/20, d3.interpolatePlasma(0.12 + (i/20)*(0.92-0.12)));
+  }
+  cx.fillStyle = grd;
+  cx.fillRect(0,0,200,10);
+}
+
+// ── SEARCH ─────────────────────────────────────────────────────────────────
+let searchActive = false;
+
+function toggleSearch() {
+  searchActive = !searchActive;
+  document.getElementById('btn-search').classList.toggle('on', searchActive);
+  const inp = document.getElementById('search-input');
+  inp.classList.toggle('visible', searchActive);
+  if (searchActive) { inp.focus(); }
+  else { inp.value=''; doSearch(''); }
+}
+
+function doSearch(q) { refreshOpacity(200); }
+
+function toggleFirstOnly() {
+  firstOnlyMode = !firstOnlyMode;
+  if (firstOnlyMode) { lastOnlyMode=false; document.getElementById('btn-last').classList.remove('on'); }
+  document.getElementById('btn-first').classList.toggle('on', firstOnlyMode);
+  refreshOpacity();
+}
+function toggleLastOnly() {
+  lastOnlyMode = !lastOnlyMode;
+  if (lastOnlyMode) { firstOnlyMode=false; document.getElementById('btn-first').classList.remove('on'); }
+  document.getElementById('btn-last').classList.toggle('on', lastOnlyMode);
+  refreshOpacity();
+}
+
+</script>
+</body>
+</html>
