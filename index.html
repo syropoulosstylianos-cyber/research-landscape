@@ -132,10 +132,45 @@ body { background:#05080f; color:#dce6f5; font-family:'Georgia',serif; overflow:
 }
 .hub-pulse { animation: hub-pulse 3.5s ease-in-out infinite; }
 
+/* ── Mobile sidebar overlay ── */
+#sidebar-overlay {
+  display:none; position:fixed; inset:0; z-index:290;
+  background:rgba(0,0,0,.45);
+}
+#sidebar-overlay.visible { display:block; }
+#menu-btn {
+  display:none; position:fixed; top:12px; right:14px; z-index:400;
+  width:38px; height:38px; border-radius:8px;
+  background:rgba(10,20,40,.9); border:1px solid rgba(140,196,228,.3);
+  color:#8cc4e4; font-size:1.15rem; cursor:pointer;
+  align-items:center; justify-content:center; padding:0;
+  font-family:'Georgia',serif;
+}
+@media (max-width:767px) {
+  #header { padding:10px 58px 6px 16px; }
+  #header h1 { font-size:.9rem; letter-spacing:2px; }
+  #header p  { font-size:.56rem; }
+  #sidebar {
+    left:-230px; top:0; bottom:0; width:220px;
+    transition:left .25s ease; z-index:300;
+    background:rgba(5,8,15,.98); padding-top:56px;
+    border-right:1px solid rgba(140,196,228,.12);
+  }
+  #sidebar.open { left:0; }
+  #menu-btn { display:flex; }
+  #tooltip {
+    left:10px !important; right:10px !important;
+    bottom:16px !important; top:auto !important; max-width:none;
+  }
+  #year-legend { bottom:16px; left:10px; right:10px; transform:none; }
+}
+
 </style>
 </head>
 <body>
 <canvas id="canvas-bg"></canvas>
+<button id="menu-btn">☰</button>
+<div id="sidebar-overlay"></div>
 <div id="header">
   <h1>STYLIANOS SYROPOULOS</h1>
   <p>RESEARCH UNIVERSE &mdash; 91 PUBLICATIONS</p>
@@ -580,21 +615,31 @@ sidebar.appendChild(panel);
 
 
 // ── SVG + LAYOUT ───────────────────────────────────────────────────────────
+const isMobile = innerWidth < 768 && navigator.maxTouchPoints > 0;
 const W = innerWidth, H = innerHeight;
-const SIDEBAR_W = 210, HEADER_H = 68;
+const SIDEBAR_W = isMobile ? 0 : 210;
+const HEADER_H  = isMobile ? 52 : 68;
+const numCols   = isMobile ? 2 : 3;
+const numRows   = isMobile ? 3 : 2;
+
+if (isMobile) {
+  const mLayout = { future:[0,0], climate:[0,1], altruism:[1,0], morality:[1,1], intergroup:[2,0], peace:[2,1] };
+  THEMES.forEach(t => { [t.row, t.col] = mLayout[t.id]; });
+}
+
 const usW = W - SIDEBAR_W, usH = H - HEADER_H - 10;
-const colW = usW / 3, rowH = usH / 2;
+const colW = usW / numCols, rowH = usH / numRows;
 const HUB_R    = Math.min(colW * 0.43, rowH * 0.43);
 const ILLUST_R = HUB_R * 0.28;
-const PR = 16; // paper node radius
-const TITLE_FS = Math.max(13, HUB_R * 0.095);
+const PR = isMobile ? 10 : 16;
+const TITLE_FS = isMobile ? Math.max(10, HUB_R * 0.12) : Math.max(13, HUB_R * 0.095);
 const TAG_FS   = Math.max(13, HUB_R * 0.08);
-const RIM_GAP  = 13;   // px from hub rim to tagline baseline
-const TXT_GAP  = 10;   // px from tagline cap-height to title baseline
+const RIM_GAP  = isMobile ? 7 : 13;
+const TXT_GAP  = isMobile ? 5 : 10;
 
 THEMES.forEach(t => {
-  t.hx = SIDEBAR_W + colW * (t.col + 0.5) + (1 - t.col) * 11;
-  t.hy = HEADER_H  + rowH * (t.row + 0.5) + (t.row === 0 ? 14 : -14);
+  t.hx = SIDEBAR_W + colW * (t.col + 0.5) + (isMobile ? 0 : (1 - t.col) * 11);
+  t.hy = HEADER_H  + rowH * (t.row + 0.5) + (isMobile ? 0 : (t.row === 0 ? 14 : -14));
 });
 
 const svg = d3.select('#main-svg').attr('width', W).attr('height', H);
@@ -803,7 +848,7 @@ hubGs.each(function(t) {
   }
 });
 
-// Tagline — above hub rim for top row, below hub rim for bottom row
+// Tagline — above hub rim for top row, below hub rim for bottom row (desktop only)
 gHubs.selectAll('text.hub-tag').data(THEMES).join('text')
   .attr('class','hub-tag')
   .attr('x', t=>t.hx)
@@ -815,20 +860,24 @@ gHubs.selectAll('text.hub-tag').data(THEMES).join('text')
   .attr('fill-opacity',.48)
   .attr('font-size', `${TAG_FS}px`)
   .attr('font-style','italic')
+  .style('display', isMobile ? 'none' : null)
   .text(t=>t.tagline);
 
-// Title — above tagline for top row, above tagline (which is below hub) for bottom row
+// Title — on desktop: above tagline (top row) or at rim (bottom row);
+//          on mobile: below hub rim for all rows
 gHubs.selectAll('text.hub-title').data(THEMES).join('text')
   .attr('class','hub-title')
   .attr('x', t=>t.hx)
-  .attr('y', t => t.row === 0
-    ? t.hy - HUB_R - RIM_GAP - TAG_FS - TXT_GAP + 10
-    : t.hy + HUB_R + RIM_GAP + 2)
+  .attr('y', t => isMobile
+    ? t.hy + HUB_R + RIM_GAP + TITLE_FS
+    : (t.row === 0
+        ? t.hy - HUB_R - RIM_GAP - TAG_FS - TXT_GAP + 10
+        : t.hy + HUB_R + RIM_GAP + 2))
   .attr('text-anchor','middle')
   .attr('fill', t=>t.color)
   .attr('font-size', `${TITLE_FS}px`)
   .attr('font-family','Georgia, serif')
-  .attr('letter-spacing','1px')
+  .attr('letter-spacing', isMobile ? '0.5px' : '1px')
   .attr('font-weight','bold')
   .style('text-shadow', t=>`0 0 14px ${t.color}`)
   .each(function(t) {
@@ -841,8 +890,7 @@ gHubs.selectAll('text.hub-title').data(THEMES).join('text')
       lines.forEach((line, i) => {
         el.append('tspan').attr('x', t.hx).attr('dy', i===0 ? 0 : '1.2em').text(line);
       });
-      // for two-line titles: top row shifts up, bottom row shifts down
-      if (t.row === 0) {
+      if (!isMobile && t.row === 0) {
         el.attr('y', t.hy - HUB_R - RIM_GAP - TAG_FS - TXT_GAP - TITLE_FS * 0.6 - 10);
       }
     }
@@ -917,16 +965,36 @@ const sim = d3.forceSimulation(nodes)
 const isSyro = d => d.first === 'Syropoulos';
 
 const pGs = gPapers.selectAll('g.pnode').data(nodes).join('g').attr('class','pnode')
-  .style('cursor', d => d.doi ? 'pointer' : 'default')
-  .call(d3.drag()
+  .style('cursor', d => d.doi ? 'pointer' : 'default');
+
+if (!isMobile) {
+  pGs.call(d3.drag()
     .on('start',(ev,d)=>{ if(!ev.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
     .on('drag', (ev,d)=>{ d.fx=ev.x; d.fy=ev.y; })
     .on('end',  (ev,d)=>{ if(!ev.active) sim.alphaTarget(0); d.fx=null; d.fy=null; })
-  )
+  );
+}
+
+pGs
   .on('mouseover', showTip)
   .on('mousemove', moveTip)
   .on('mouseout',  hideTip)
   .on('click', (_,d) => { if(d.doi) window.open(d.doi,'_blank'); });
+
+// Touch support
+let _touchTs = 0;
+pGs.on('touchstart', function(ev, d) {
+  _touchTs = Date.now();
+  const t = ev.touches[0];
+  showTip({ clientX: t.clientX, clientY: t.clientY }, d);
+}, { passive: true })
+.on('touchend', function(ev, d) {
+  if (Date.now() - _touchTs < 300 && d.doi) window.open(d.doi, '_blank');
+}, { passive: true });
+
+document.addEventListener('touchstart', e => {
+  if (!e.target.closest('.pnode')) hideTip();
+}, { passive: true });
 
 // Citation aura — glow ring sized by sqrt(cites), shown in cite mode
 pGs.append('circle').attr('class','cite-aura')
@@ -1050,11 +1118,12 @@ function showTip(ev,d) {
   const citeEl = document.getElementById('tt-cite');
   if (d.cites != null) { citeEl.style.display='block'; citeEl.textContent=`📊 ${d.cites} citation${d.cites!==1?'s':''}  (Google Scholar)`; }
   else { citeEl.style.display='none'; }
-  document.getElementById('tt-click').textContent = d.doi ? 'Click to open paper ↗' : '';
+  document.getElementById('tt-click').textContent = d.doi ? (isMobile ? 'Tap to open paper ↗' : 'Click to open paper ↗') : '';
   tip.classList.add('visible');
   moveTip(ev);
 }
 function moveTip(ev) {
+  if (isMobile) return;
   let x=ev.clientX+16, y=ev.clientY-12;
   if(x+300>W) x=ev.clientX-315;
   if(y+200>H) y=H-205;
@@ -1432,6 +1501,24 @@ function toggleLastOnly() {
   document.getElementById('btn-last').classList.toggle('on', lastOnlyMode);
   refreshOpacity();
 }
+
+// ── MOBILE MENU ─────────────────────────────────────────────────────────────
+const menuBtn       = document.getElementById('menu-btn');
+const sidebarEl     = document.getElementById('sidebar');
+const sidebarOvl    = document.getElementById('sidebar-overlay');
+
+function closeSidebar() {
+  sidebarEl.classList.remove('open');
+  sidebarOvl.classList.remove('visible');
+  menuBtn.textContent = '☰';
+}
+menuBtn.addEventListener('click', () => {
+  const opening = !sidebarEl.classList.contains('open');
+  sidebarEl.classList.toggle('open', opening);
+  sidebarOvl.classList.toggle('visible', opening);
+  menuBtn.textContent = opening ? '✕' : '☰';
+});
+sidebarOvl.addEventListener('click', closeSidebar);
 
 </script>
 </body>
