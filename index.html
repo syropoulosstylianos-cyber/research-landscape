@@ -391,6 +391,53 @@ const COAUTHORS = {
   91: ['Wang','Law','Young'],
 };
 
+// ── JOURNAL FULL NAMES ─────────────────────────────────────────────────────
+const JOURNAL_NAMES = {
+  'JEP':         'Journal of Environmental Psychology',
+  'PID':         'Personality and Individual Differences',
+  'PSPB':        'Personality and Social Psychology Bulletin',
+  'GPIR':        'Group Processes & Intergroup Relations',
+  'BJSP':        'British Journal of Social Psychology',
+  'SPPC':        'Social and Personality Psychology Compass',
+  'P&C':         'Peace and Conflict',
+  'SPPS':        'Social Psychological and Personality Science',
+  'PNAS Nexus':  'PNAS Nexus',
+  'PNAS':        'PNAS',
+  'Sci Data':    'Scientific Data',
+  'Sci Rep':     'Scientific Reports',
+  'Soc Cog':     'Social Cognition',
+  'Sustainability':'Sustainability',
+  'EJSP':        'European Journal of Social Psychology',
+  'JSPP':        'Journal of Social and Political Psychology',
+  'JASP':        'Journal of Applied Social Psychology',
+  'Nat CC':      'Nature Climate Change',
+  'Nat HB':      'Nature Human Behaviour',
+  'Nat Rev Psy': 'Nature Reviews Psychology',
+  'Sci Adv':     'Science Advances',
+  'Pol Behav':   'Political Behavior',
+  'Pol Psych':   'Political Psychology',
+  'JPSP':        'Journal of Personality and Social Psychology',
+  'Cog Sci':     'Cognitive Science',
+  'WIRES CC':    'WIREs Climate Change',
+  'BMC Psych':   'BMC Psychology',
+  'Futures':     'Futures',
+  'npj CA':      'npj Climate Action',
+  'J Med Ethics':'Journal of Medical Ethics',
+  'COBS':        'Current Opinion in Behavioral Sciences',
+  'J Ind Diff':  'Journal of Individual Differences',
+  'Phil Trans B':'Philosophical Transactions B',
+  'Front SC':    'Frontiers in Sustainable Cities',
+  'Front Psych': 'Frontiers in Psychology',
+  'Adv Psych':   'Advances in Psychology',
+  'ASAP':        'Analyses of Social Issues & Public Policy',
+  'RBB':         'Religion, Brain & Behavior',
+  'Sci Comm':    'Science Communication',
+  'CRSP':        'Criminal Justice Review',
+  'Space Policy':'Space Policy',
+  'CCR':         'Cross-Cultural Research',
+  'JMHCC':       'Journal of Mental Health and Climate Change',
+};
+
 // ── INSTITUTIONS ───────────────────────────────────────────────────────────
 const INSTITUTIONS = [
   { id:'umass', name:'UMass Amherst',               abbr:'UMass', color:'#D45050', years:'2019–2022' },
@@ -607,6 +654,12 @@ btnCollab.className='tool-btn'; btnCollab.id='btn-collab';
 btnCollab.innerHTML='<span style="font-size:.9rem">👥</span>&nbsp; Top collaborators';
 btnCollab.onclick=showCollabPanel;
 sidebar.appendChild(btnCollab);
+
+const btnJournal = document.createElement('button');
+btnJournal.className='tool-btn'; btnJournal.id='btn-journal';
+btnJournal.innerHTML='<span style="font-size:.9rem">📰</span>&nbsp; Top journals';
+btnJournal.onclick=showJournalPanel;
+sidebar.appendChild(btnJournal);
 
 // Paper list overlay panel (populated on hub/theme click)
 const panel = document.createElement('div');
@@ -1142,6 +1195,7 @@ function nodeOpacity(d) {
   if (activeTheme         && d.theme !== activeTheme)  return 0.06;
   if (activeInstitution   && d.affil !== activeInstitution) return 0.06;
   if (typeof activeCollaborator !== 'undefined' && activeCollaborator && !(COAUTHORS[d.n]||[]).includes(activeCollaborator)) return 0.06;
+  if (typeof activeJournal !== 'undefined' && activeJournal && d.abbr !== activeJournal) return 0.06;
   const inp = document.getElementById('search-input');
   if (inp) {
     const q = inp.value.trim().toLowerCase();
@@ -1308,12 +1362,19 @@ function toggleTrajectory() {
 // ── TOP COLLABORATORS ──────────────────────────────────────────────────────
 let collabMode = false;
 let activeCollaborator = null;
+let journalMode = false;
+let activeJournal = null;
 // Count using full COAUTHORS data
 const collabCounts = {};
 Object.values(COAUTHORS).forEach(arr => arr.forEach(name => {
   collabCounts[name] = (collabCounts[name] || 0) + 1;
 }));
 const TOP_COLLABS = Object.entries(collabCounts).sort((a,b) => b[1]-a[1]).slice(0,10);
+
+// Count using PAPERS abbr field
+const journalCounts = {};
+PAPERS.forEach(p => { journalCounts[p.abbr] = (journalCounts[p.abbr] || 0) + 1; });
+const TOP_JOURNALS = Object.entries(journalCounts).sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0])).slice(0,10);
 
 function buildCollabList() {
   activeCollaborator = null;
@@ -1368,6 +1429,74 @@ function filterByCollaborator(name) {
     const tc = themeMap[p.theme].color;
     const citeStr = CITES[p.n] != null ? `<span style="color:${tc};opacity:.6;float:right">${CITES[p.n]} cit.</span>` : '';
     item.innerHTML = `<div class="pl-meta" style="color:${tc}">${p.year} · ${p.abbr}${citeStr}</div><div class="pl-title">${p.title}</div>`;
+    if (p.doi) item.onclick = () => window.open(p.doi, '_blank');
+    panel.appendChild(item);
+  });
+  panel.classList.add('visible');
+}
+
+// ── TOP JOURNALS ───────────────────────────────────────────────────────────
+function buildJournalList() {
+  activeJournal = null;
+  refreshOpacity();
+  panel.innerHTML = '';
+  const back = document.createElement('button');
+  back.id = 'pl-back'; back.innerHTML = '← Close';
+  back.onclick = () => { journalMode=false; document.getElementById('btn-journal').classList.remove('on'); activeJournal=null; refreshOpacity(); hidePaperList(); };
+  panel.appendChild(back);
+  const hdr = document.createElement('div');
+  hdr.id = 'pl-heading'; hdr.style.color = '#f5c842';
+  hdr.textContent = '📰 Top 10 Journals';
+  panel.appendChild(hdr);
+  const sub = document.createElement('div');
+  sub.id = 'pl-count'; sub.textContent = 'Ranked by number of publications';
+  panel.appendChild(sub);
+  TOP_JOURNALS.forEach(([abbr, count], i) => {
+    const fullName = JOURNAL_NAMES[abbr] || abbr;
+    const item = document.createElement('div');
+    item.className = 'pl-item'; item.style.cursor = 'pointer';
+    item.innerHTML = `<div class="pl-meta" style="color:#f5c842"><span style="font-size:.6rem;color:#7a6020;margin-right:5px">#${i+1}</span>${abbr}<span style="float:right;color:#a08040">${count} paper${count>1?'s':''}</span></div><div class="pl-title" style="font-size:.63rem;color:#7a9ab8">${fullName}</div>`;
+    item.onclick = () => filterByJournal(abbr);
+    panel.appendChild(item);
+  });
+  panel.classList.add('visible');
+}
+function showJournalPanel() {
+  journalMode = !journalMode;
+  document.getElementById('btn-journal').classList.toggle('on', journalMode);
+  if (!journalMode) { activeJournal=null; refreshOpacity(); hidePaperList(); return; }
+  buildJournalList();
+}
+function filterByJournal(abbr) {
+  activeJournal = abbr;
+  refreshOpacity();
+  const papers = PAPERS.filter(p => p.abbr === abbr).sort((a,b) => b.year-a.year);
+  panel.innerHTML = '';
+  const back = document.createElement('button');
+  back.id = 'pl-back'; back.innerHTML = '← Top journals';
+  back.onclick = () => { activeJournal=null; refreshOpacity(); buildJournalList(); };
+  panel.appendChild(back);
+  const hdr = document.createElement('div');
+  hdr.id = 'pl-heading'; hdr.style.color = '#f5c842';
+  hdr.textContent = `📰 ${abbr}`;
+  panel.appendChild(hdr);
+  const fullName = JOURNAL_NAMES[abbr] || '';
+  if (fullName && fullName !== abbr) {
+    const sub2 = document.createElement('div');
+    sub2.style.cssText = 'font-size:.62rem;color:#7a9ab8;margin-bottom:6px;padding:0 4px;';
+    sub2.textContent = fullName;
+    panel.appendChild(sub2);
+  }
+  const cnt = document.createElement('div');
+  cnt.id = 'pl-count'; cnt.textContent = `${papers.length} paper${papers.length>1?'s':''}`;
+  panel.appendChild(cnt);
+  papers.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'pl-item';
+    if (p.doi) item.dataset.doi = '1';
+    const tc = themeMap[p.theme].color;
+    const citeStr = CITES[p.n] != null ? `<span style="color:${tc};opacity:.6;float:right">${CITES[p.n]} cit.</span>` : '';
+    item.innerHTML = `<div class="pl-meta" style="color:${tc}">${p.year} · ${themeMap[p.theme].name.split(' ')[0]}${citeStr}</div><div class="pl-title">${p.title}</div>`;
     if (p.doi) item.onclick = () => window.open(p.doi, '_blank');
     panel.appendChild(item);
   });
