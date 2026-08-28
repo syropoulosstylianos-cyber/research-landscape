@@ -173,7 +173,7 @@ body { background:#05080f; color:#dce6f5; font-family:'Georgia',serif; overflow:
 <div id="sidebar-overlay"></div>
 <div id="header">
   <h1>STYLIANOS SYROPOULOS</h1>
-  <p>RESEARCH UNIVERSE &mdash; 91 PUBLICATIONS</p>
+  <p>RESEARCH UNIVERSE &mdash; 100 PUBLICATIONS</p>
 </div>
 <div id="sidebar"><h3>Themes</h3></div>
 <svg id="main-svg"></svg>
@@ -246,6 +246,9 @@ const BRIDGES = {
   74:{ secondary:'peace',      note:'COVID worldview shifts erode social trust' },
   27:{ secondary:'peace',      note:'Political similarity reduces perceived threat' },
   78:{ secondary:'altruism',   note:'Collective climate action as large-scale cooperation' },
+  93:{ secondary:'climate',    note:'Ecological humility meets planetary geoengineering' },
+  96:{ secondary:'altruism',   note:'Intergenerational concern steers high-impact careers' },
+  98:{ secondary:'altruism',   note:'Present-day poverty shapes concern for the future' },
 };
 
 // ── CITATION COUNTS (from Google Scholar) ─────────────────────────────────
@@ -264,6 +267,7 @@ const CITES = {
 // ── LAST-AUTHOR PAPERS (Syropoulos is senior/last author) ─────────────────
 const LAST_PAPERS = new Set([
   31,48,49,50,51,52,53,57,60,63,65,67,68,70,72,76,79,82,87,90,
+  91,93,96,97,99,100,
 ]);
 
 // ── MENTEE PAPERS (contain † grad, †† undergrad, or ‡ postdoc mentee) ──────
@@ -293,7 +297,11 @@ const MENTEE_PAPERS = new Set([
   87,  // ‡ Law (postdoc)
   88,  // ‡ Law (postdoc)
   90,  // † Capozzoli (grad), ‡ Law (postdoc)
-  91,  // †† Wang (undergrad), ‡ Law (postdoc)
+  91,  // ‡ Law (postdoc)
+  92,  // ‡ Law (postdoc)
+  96,  // ‡ Law (postdoc), †† Antoniadis (undergrad)
+  97,  // †† Wang (undergrad), ‡ Law (postdoc)
+  98,  // ‡ Law (postdoc), † Capozzoli (grad)
 ]);
 
 // ── CO-AUTHOR DATA (all named collaborators per paper, excl. Syropoulos) ───
@@ -388,7 +396,16 @@ const COAUTHORS = {
   88: ['Bae','Law',"O'Connor",'Amormino','Crimston','Bastian','Marsh','Young'],
   89: ['Lifshin','Greenberg','Leidner','Helm','Mikulincer','Horner','Sullivan'],
   90: ['Capozzoli','Law'],
-  91: ['Wang','Law','Young'],
+  91: ['Law','Bae','Young'],
+  92: ['Wu','Mah','Law','Dixon-Gordon','Markowitz','Nteta','Reid','Ginn','Suh','Young','Lickel'],
+  93: ['DesRoches','McGregor'],
+  94: ['Garau','Lo Destro','Rullo','Prati','Visintin'],
+  95: ['Tiwathia','Watamanuk','Dodson','Law','Thulin'],
+  96: ['Law','Antoniadis','Rogers','Young','Goya-Tocchetto','Amormino'],
+  97: ['Wang','Law','Young'],
+  98: ['Law','Signorini','Capozzoli','Young',"O'Connor"],
+  99: ['Loustau','Mah','Park','Dixon-Gordon','Markowitz','Nteta','Reid','Ginn','Suh','Lickel','Young'],
+  100:['Loustau','Young','Wylie'],
 };
 
 // ── JOURNAL FULL NAMES ─────────────────────────────────────────────────────
@@ -436,6 +453,10 @@ const JOURNAL_NAMES = {
   'Space Policy':'Space Policy',
   'CCR':         'Cross-Cultural Research',
   'JMHCC':       'Journal of Mental Health and Climate Change',
+  'JCASP':       'Journal of Community & Applied Social Psychology',
+  'CJP':         'Canadian Journal of Philosophy',
+  'Clim Change': 'Climatic Change',
+  'Self Id':     'Self and Identity',
 };
 
 // ── INSTITUTIONS ───────────────────────────────────────────────────────────
@@ -455,7 +476,9 @@ function getAffil(year) {
 
 // ── PAPERS ─────────────────────────────────────────────────────────────────
 const PAPERS = [
-  {n:90,first:'Capozzoli',year:2026,abbr:'GPIR',        theme:'future',    title:'Future Generations Hold the Lowest Moral Standing, Even Below Present-Day Marginalized Human and Non-Human Outgroups',doi:'https://osf.io/preprints/psyarxiv/c9p8f_v1'},
+  {n:98,first:'Law',      year:2026,abbr:'PSPB',        theme:'future',    title:'Why Global Poverty in the Present Matters for Intergenerational Concern and the Future of Humanity',doi:'https://osf.io/preprints/psyarxiv/2a5qn_v2'},
+  {n:96,first:'Law',      year:2026,abbr:'JCASP',       theme:'future',    title:'Impartial Intergenerational Beneficence Predicts Interest in High-Impact, Long-Term Oriented Careers',doi:'https://doi.org/10.1002/casp.70310'},
+  {n:90,first:'Capozzoli',year:2026,abbr:'GPIR',        theme:'future',    title:'Future Generations Hold the Lowest Moral Standing, Even Below Present-Day Marginalized Human and Non-Human Outgroups',doi:'https://doi.org/10.1177/13684302261426259'},
   {n:87,first:'Law',      year:2026,abbr:'Futures',     theme:'future',    title:'Americans Underestimate Their Concern for Future Generations',doi:'https://doi.org/10.1016/j.futures.2026.103819'},
   {n:82,first:'Bauer',    year:2026,abbr:'BJSP',        theme:'future',    title:'Concern for Future Generations Predicts Present-Day Extraordinary Altruism: Organ Donorship',doi:'https://doi.org/10.1111/bjso.70070'},
   {n:72,first:'Law',      year:2025,abbr:'PSPB',        theme:'future',    title:'Mapping and Increasing Americans\' Support for Initiatives Protecting Future Generations',doi:'https://doi.org/10.1177/01461672251384359'},
@@ -476,6 +499,7 @@ const PAPERS = [
   {n:30,first:'Syropoulos',year:2023,abbr:'Nat Rev Psy',theme:'future',    title:'Improving the lives of future people',doi:'https://doi.org/10.1038/s44159-023-00249-x'},
   {n:22,first:'Syropoulos',year:2023,abbr:'JEP',        theme:'future',    title:'Our responsibility to future generations: The case for intergenerational approaches',doi:'https://doi.org/10.1016/j.jenvp.2023.102006'},
 
+  {n:95,first:'Tiwathia', year:2026,abbr:'Clim Change', theme:'climate',   title:'Majority of Americans Support Climate-Friendly Content in Entertainment',doi:'https://doi.org/10.1007/s10584-026-04258-6'},
   {n:86,first:'Janssen',  year:2026,abbr:'Space Policy',theme:'climate',   title:'Examining the meaning of sustainability on the Moon',doi:'https://doi.org/10.1016/j.spacepol.2026.101761'},
   {n:78,first:'Goldwert', year:2026,abbr:'PNAS Nexus',  theme:'climate',   title:'A Megastudy of Behavioral Interventions to Catalyze Collective Climate Action',doi:'https://doi.org/10.1093/pnasnexus/pgaf400'},
   {n:80,first:'Barbett',  year:2026,abbr:'JEP',         theme:'climate',   title:'Nature Connectedness and Well-Being: Multi-National Investigation Across 76 Countries',doi:'https://doi.org/10.1016/j.jenvp.2025.102895'},
@@ -510,8 +534,10 @@ const PAPERS = [
   {n:3, first:'Syropoulos',year:2021,abbr:'JEP',        theme:'altruism',  title:'The role of gratitude in motivating intergenerational environmental stewardship',doi:'https://doi.org/10.1016/j.jenvp.2020.101517'},
   {n:7, first:'Syropoulos',year:2021,abbr:'PID',        theme:'altruism',  title:'A grateful eye towards the future? Gratitude relates to consideration of future consequences',doi:'https://doi.org/10.1016/j.paid.2021.110911'},
 
-  {n:91,first:'Wang',     year:2026,abbr:'Soc Cog',     theme:'morality',  title:'Investigating Relationships Between Moral Foundations and Support for Revenge',doi:'https://osf.io/preprints/psyarxiv/zkc65_v1'},
-  {n:89,first:'Lifshin',  year:2026,abbr:'GPIR',        theme:'morality',  title:'Am Not an Animal – I am an American: Disassociation from animals and cultural worldview defense',doi:''},
+  {n:97,first:'Wang',     year:2026,abbr:'Soc Cog',     theme:'morality',  title:'Investigating Relationships Between Moral Foundations and Support for Revenge',doi:'https://osf.io/preprints/psyarxiv/zkc65_v1'},
+  {n:93,first:'DesRoches',year:2026,abbr:'CJP',         theme:'morality',  title:'Ecological Humility and Geoengineering the Earth',doi:'https://doi.org/10.1017/can.2026.10076'},
+  {n:91,first:'Law',      year:2026,abbr:'Pol Psych',   theme:'morality',  title:'Dispelling the Myth of Moral Inversion: Liberal Universalism Coexists with Close-Other Concern',doi:'https://doi.org/10.1111/pops.70158'},
+  {n:89,first:'Lifshin',  year:2026,abbr:'GPIR',        theme:'morality',  title:'Am Not an Animal – I am an American: Disassociation from animals and cultural worldview defense',doi:'https://doi.org/10.1177/1368430226142593'},
   {n:83,first:'Syropoulos',year:2026,abbr:'JEP',        theme:'morality',  title:'Ecological Humility as a Distinct Moral Orientation Toward Nature: Scale Development and Validation',doi:'https://doi.org/10.1016/j.jenvp.2026.102998'},
   {n:67,first:'Law',      year:2025,abbr:'JEP',         theme:'morality',  title:'Universal insights into moral expansiveness: Selective valuation of nature and humans',doi:'https://doi.org/10.1016/j.jenvp.2025.102778'},
   {n:15,first:'Syropoulos',year:2022,abbr:'JPSP',       theme:'morality',  title:'Bigotry and the human–animal divide: (Dis)belief in human evolution and bigoted attitudes',doi:'https://doi.org/10.1037/pspi0000391'},
@@ -520,6 +546,9 @@ const PAPERS = [
   {n:12,first:'Ge',       year:2022,abbr:'CCR',          theme:'morality',  title:'Constructivist Self-Construal: A Cross-Cultural Comparison',doi:'https://doi.org/10.1177/10693971211055276'},
   {n:1, first:'Piazza',   year:2019,abbr:'SPPS',         theme:'morality',  title:'Which appraisals are foundational to moral judgment? Harm, injustice, and beyond',doi:'https://doi.org/10.1177/1948550618801326'},
 
+  {n:100,first:'Loustau', year:2026,abbr:'Pol Psych',   theme:'intergroup',title:'Partisans Underestimate and are Influenced by In-and-Out-Party Dynamic Norms',doi:''},
+  {n:94,first:'Garau',    year:2026,abbr:'JCASP',       theme:'intergroup',title:'Cultural Humility Mitigates the Negative Effect of Collective Narcissism on Support for Multiculturalism',doi:'https://doi.org/10.1002/casp.70304'},
+  {n:92,first:'Wu',       year:2026,abbr:'GPIR',        theme:'intergroup',title:'Shifting Demographics, Shifting Perceptions: How Race and Politics Shape Reactions to the Majority-Minority Future',doi:'https://doi.org/10.1177/13684302261454594'},
   {n:85,first:'Syropoulos',year:2026,abbr:'GPIR',       theme:'intergroup',title:'Presidential Candidate Endorsements by Scientific Journals Decrease Trust in Science',doi:'https://doi.org/10.1177/13684302261425955'},
   {n:77,first:'Wu',       year:2026,abbr:'Adv Psych',   theme:'intergroup',title:'The Politics of Well-Being During Democratic Backsliding',doi:'https://doi.org/10.56296/aip00051'},
   {n:75,first:'Toribio-Florez',year:2026,abbr:'EJSP',   theme:'intergroup',title:'Victims of Conspiracies? Conspiracy beliefs and victim justice sensitivity across nations',doi:'https://doi.org/10.1002/ejsp.70008'},
@@ -543,6 +572,7 @@ const PAPERS = [
   {n:8, first:'Syropoulos',year:2021,abbr:'Pol Psych',  theme:'peace',     title:'Positive and negative peace as predictors of effective governmental responses to COVID-19',doi:'https://doi.org/10.1111/pops.12773'},
   {n:4, first:'Syropoulos',year:2021,abbr:'P&C',        theme:'peace',     title:'Deadly but protective: Americans\' unique perception of weapons',doi:'https://doi.org/10.1037/pac0000507'},
   {n:2, first:'Syropoulos',year:2020,abbr:'P&C',        theme:'peace',     title:'Personal safety and positive life outcomes: Cross-national evidence from the World Values Survey',doi:'https://doi.org/10.1037/pac0000444'},
+  {n:99,first:'Loustau',   year:2026,abbr:'Self Id',    theme:'peace',     title:'Social Network Diversity and Mental Well-Being During the COVID-19 Pandemic',doi:''},
   {n:84,first:'Wu',        year:2026,abbr:'ASAP',       theme:'peace',     title:'Is academia for everyone? Experiences of U.S. psychology doctoral students',doi:'https://doi.org/10.1111/asap.70061'},
   {n:57,first:'Chukwudebe',year:2025,abbr:'PID',        theme:'peace',     title:'Independence of Intellect and Ego Relates to Increased Subjective Well-being',doi:'https://doi.org/10.1016/j.paid.2025.113091'},
   {n:17,first:'Hoogeveen',year:2022,abbr:'RBB',         theme:'peace',     title:'A many-analysts approach to the relation between religiosity and well-being',doi:'https://doi.org/10.1080/2153599X.2022.2070255'},
@@ -1304,7 +1334,7 @@ const sortedNodes = [...nodes].sort((a,b) => a.n - b.n);
 
 function buildTrajectory() {
   gTrajectory.selectAll('*').remove();
-  // End rings mark paper #1 (oldest) and #91 (newest)
+  // End rings mark paper #1 (oldest) and #100 (newest)
   gTrajectory.selectAll('circle.traj-end').data([sortedNodes[0], sortedNodes[sortedNodes.length-1]]).join('circle')
     .attr('class','traj-end').attr('r', 22).attr('fill','none')
     .attr('stroke','rgba(255,255,255,0.82)').attr('stroke-width', 2.5)
